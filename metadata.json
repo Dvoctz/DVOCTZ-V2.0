@@ -1,0 +1,6 @@
+{
+  "name": "DVOC V2 - Tournament Platform",
+  "description": "High-end sports tournament platform with an editorial dark luxury aesthetic.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
