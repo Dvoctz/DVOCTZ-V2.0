@@ -1,6 +1,7 @@
 import React from "react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 
 export default function LoginPage() {
@@ -36,6 +37,16 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-black flex flex-col justify-center items-center py-12 px-4 relative selection:bg-amber-500 selection:text-black font-sans">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-zinc-900/20 via-black to-black pointer-events-none"></div>
+
+      <div className="w-full max-w-[420px] mb-8 relative z-10">
+        <Link
+          to="/"
+          className="text-[10px] uppercase tracking-widest text-zinc-500 hover:text-white transition-colors flex items-center font-bold"
+        >
+          <ArrowLeft className="h-3 w-3 mr-2" />
+          Return to DVOC
+        </Link>
+      </div>
 
       <div className="w-full max-w-[420px] bg-zinc-950 border border-amber-500/30 shadow-[0_0_100px_rgba(0,0,0,0.8)] p-10 relative z-10 ring-8 ring-zinc-950/50">
         <div className="text-center mb-10">
