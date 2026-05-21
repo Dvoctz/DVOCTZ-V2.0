@@ -6,6 +6,7 @@ import TournamentDetailPage from "@/app/(public)/tournaments/[id]/page"
 import PlayerProfilePage from "@/app/(public)/players/[id]/page"
 import PlayersDirectoryPage from "@/app/(public)/players/page"
 import TransfersPage from "@/app/(public)/transfers/page"
+import TournamentsArchivePage from "@/app/(public)/tournaments/page"
 import AdminOverview from "@/app/admin/page"
 import AdminTournaments from "@/app/admin/tournaments/page"
 import AdminTeams from "@/app/admin/teams/page"
@@ -23,6 +24,7 @@ const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: "/players", element: <PlayersDirectoryPage /> },
       { path: "/transfers", element: <TransfersPage /> },
+      { path: "/tournaments", element: <TournamentsArchivePage /> },
       { path: "/tournaments/:id", element: <TournamentDetailPage /> },
       { path: "/players/:id", element: <PlayerProfilePage /> }
     ]
