@@ -30,6 +30,7 @@ export function Navbar() {
         <div className="hidden md:flex gap-6 text-xs uppercase tracking-widest text-zinc-400 font-semibold">
           <Link to="/" className={`${isHome && location.hash === '' ? 'text-amber-400 hover:text-amber-300' : 'hover:text-white'} transition-colors`}>Home</Link>
           <Link to="/players" className={`${location.pathname.startsWith('/players') ? 'text-amber-400 hover:text-amber-300' : 'hover:text-white'} transition-colors`}>Players</Link>
+          <Link to="/transfers" className={`${location.pathname.startsWith('/transfers') ? 'text-amber-400 hover:text-amber-300' : 'hover:text-white'} transition-colors`}>Transfers</Link>
           <Link to="/#circuits" className={`${isHome && location.hash === '#circuits' ? 'text-amber-400 hover:text-amber-300' : 'hover:text-white'} transition-colors`}>Tournaments</Link>
           <Link to="/#standings" className={`${isHome && location.hash === '#standings' ? 'text-amber-400 hover:text-amber-300' : 'hover:text-white'} transition-colors`}>Leaderboard</Link>
           <Link to="/admin" className={`${location.pathname.startsWith('/admin') ? 'text-amber-400 hover:text-amber-300' : 'hover:text-white'} transition-colors`}>Admin</Link>

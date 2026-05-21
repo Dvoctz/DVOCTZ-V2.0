@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
-import { UserSquare2, Trophy, Flag, CalendarDays, Activity } from 'lucide-react'
+import { UserSquare2, Trophy, Flag, CalendarDays, Activity, ArrowRightLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 type PlayerProfile = {
@@ -36,6 +36,8 @@ export default function PlayerProfilePage() {
     losses: 0,
     tournamentsPlayed: 0
   })
+  
+  const [transfers, setTransfers] = useState<any[]>([])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -54,6 +56,20 @@ export default function PlayerProfilePage() {
         
       if (playerData) {
         setPlayer(playerData)
+        
+        const { data: transfersData } = await supabase
+          .from('player_transfers')
+          .select(`
+            id, transfer_date, notes,
+            from_team:teams!from_team_id(id, name),
+            to_team:teams!to_team_id(id, name)
+          `)
+          .eq('player_id', id)
+          .order('transfer_date', { ascending: false })
+          
+        if (transfersData) {
+          setTransfers(transfersData)
+        }
         
         if (playerData.teams?.id) {
           const { data: fixturesData } = await supabase
@@ -192,11 +208,11 @@ export default function PlayerProfilePage() {
                   <div>
                     <p className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold mb-0.5">Registered Since</p>
                     <p className="text-sm font-semibold text-zinc-300">
-                      {new Date(player.created_at).toLocaleDateString(undefined, {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
+                      {(() => {
+                        const dateStr = (player as any).joined_at || player.created_at;
+                        if (!dateStr || isNaN(Date.parse(dateStr))) return 'DVOC Registered Player';
+                        return new Date(dateStr).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+                      })()}
                     </p>
                   </div>
                 </div>
@@ -230,7 +246,7 @@ export default function PlayerProfilePage() {
               </div>
               
               <div className="bg-zinc-950 border border-zinc-900 p-6 text-center group hover:border-amber-500/50 transition-colors">
-                <p className="text-[10px] uppercase font-bold tracking-widest text-zinc-500 mb-2">Events</p>
+                <p className="text-[10px] uppercase font-bold tracking-widest text-zinc-500 mb-2 truncate">Man of the Match</p>
                 <p className="text-4xl font-black italic text-white group-hover:text-amber-500 transition-colors">{stats.tournamentsPlayed}</p>
               </div>
             </div>
@@ -256,9 +272,40 @@ export default function PlayerProfilePage() {
             </div>
           </div>
           
-          <div className="bg-zinc-950/50 border border-dashed border-zinc-900 p-8 text-center mt-8">
-            <h4 className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-2">Detailed Match History</h4>
-            <p className="text-zinc-600 text-sm mb-4">Detailed match history logging will be available in a future update.</p>
+          <div className="mt-12">
+            <h3 className="text-xs font-black tracking-widest text-white uppercase flex items-center gap-2 mb-6 border-b border-zinc-900 pb-3">
+              <ArrowRightLeft className="w-4 h-4 text-emerald-500" /> Transfer History
+            </h3>
+            
+            {transfers.length === 0 ? (
+              <div className="bg-zinc-950/50 border border-dashed border-zinc-900 p-8 text-center text-zinc-500 text-xs font-bold uppercase tracking-widest">
+                No transfer history
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {transfers.map((tx: any) => (
+                  <div key={tx.id} className="bg-zinc-950 border border-zinc-900 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="flex flex-col items-end">
+                        <span className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest leading-none mb-1">From</span>
+                        <span className="text-sm text-zinc-400 font-medium">{tx.from_team?.name || 'Free Agent'}</span>
+                      </div>
+                      <ArrowRightLeft className="w-4 h-4 text-emerald-500 shrink-0" />
+                      <div className="flex flex-col items-start">
+                        <span className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest leading-none mb-1">To</span>
+                        <span className="text-sm text-white font-medium">{tx.to_team?.name || 'Free Agent'}</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col md:items-end">
+                      <span className="text-sm font-semibold text-zinc-300">
+                        {tx.transfer_date ? new Date(tx.transfer_date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'Unknown Date'}
+                      </span>
+                      {tx.notes && <span className="text-xs text-zinc-500 mt-1">{tx.notes}</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           
         </div>
