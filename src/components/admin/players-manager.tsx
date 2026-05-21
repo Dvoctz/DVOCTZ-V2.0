@@ -1,8 +1,10 @@
+import React from 'react';
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { UserSquare2, Edit2, Trash2, Plus, X } from "lucide-react"
+import { ImageUpload } from "@/components/ui/image-upload"
 
 type Player = {
   id: number | string
@@ -129,7 +131,7 @@ export function PlayersManager() {
     setEditingId(null)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault()
     setIsSubmitting(true)
     setError(null)
@@ -268,7 +270,9 @@ export function PlayersManager() {
                     {p.role}
                   </p>
                   <h3 className="text-lg font-medium text-white flex items-center gap-2">
-                    {p.name}
+                    <a href={`/players/${p.id}`} target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">
+                      {p.name}
+                    </a>
                   </h3>
                   <div className="flex items-center gap-3 mt-1">
                     {p.clubs?.name && (
@@ -377,14 +381,12 @@ export function PlayersManager() {
                 </select>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold block">Photo URL</label>
-                <Input 
-                  type="url"
+              <div className="space-y-4">
+                <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold block">Player Photo</label>
+                <ImageUpload 
+                  bucket="player-photos"
                   value={formData.photo_url}
-                  onChange={e => setFormData(p => ({ ...p, photo_url: e.target.value }))}
-                  placeholder="https://example.com/photo.jpg"
-                  className="focus:border-blue-500/50"
+                  onChange={(url) => setFormData(p => ({ ...p, photo_url: url }))}
                 />
               </div>
 

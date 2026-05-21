@@ -1,8 +1,10 @@
+import React from 'react';
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Users, Edit2, Trash2, Plus, X } from "lucide-react"
+import { ImageUpload } from "@/components/ui/image-upload"
 
 type Team = {
   id: number | string
@@ -108,7 +110,7 @@ export function TeamsManager({ filterDivision }: { filterDivision?: string }) {
     setEditingId(null)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault()
     setIsSubmitting(true)
     setError(null)
@@ -325,14 +327,12 @@ export function TeamsManager({ filterDivision }: { filterDivision?: string }) {
                 </select>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold block">Logo Image URL</label>
-                <Input 
-                  type="url"
+              <div className="space-y-4">
+                <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold block">Team Logo</label>
+                <ImageUpload 
+                  bucket="team-logos"
                   value={formData.logo_url}
-                  onChange={e => setFormData(p => ({ ...p, logo_url: e.target.value }))}
-                  placeholder="https://example.com/logo.png"
-                  className="focus:border-emerald-500/50"
+                  onChange={(url) => setFormData(p => ({ ...p, logo_url: url }))}
                 />
               </div>
 

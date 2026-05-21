@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -13,6 +14,7 @@ type Fixture = {
   ground: string
   date_time: string
   status: string
+  stage?: string
   referee: string
   man_of_the_match_id: number | string | null
   best_of: number
@@ -45,6 +47,13 @@ const FIXTURE_STATUSES = [
   'completed'
 ]
 
+const FIXTURE_STAGES = [
+  'round-robin',
+  'quarterfinal',
+  'semifinal',
+  'final'
+]
+
 export function FixturesManager({ filterDivision }: { filterDivision?: string }) {
   const [fixtures, setFixtures] = useState<Fixture[]>([])
   const [tournaments, setTournaments] = useState<{id: string | number, name: string, division?: string, phase?: string}[]>([])
@@ -70,6 +79,7 @@ export function FixturesManager({ filterDivision }: { filterDivision?: string })
     ground: '',
     date_time: '',
     status: FIXTURE_STATUSES[0],
+    stage: 'round-robin',
     referee: '',
     man_of_the_match_id: '',
     winner_team_id: '',
@@ -82,11 +92,11 @@ export function FixturesManager({ filterDivision }: { filterDivision?: string })
     ? tournaments.filter(t => t.division === filterDivision)
     : tournaments
 
-  const displayedFixtures = fixtures.filter(f => {
+  const displayedFixtures = tournamentFilter ? fixtures.filter(f => {
     // @ts-ignore - division may exist from joined select
     const div = f.tournaments?.division
     if (filterDivision && div !== filterDivision) return false
-    if (tournamentFilter && f.tournament_id?.toString() !== tournamentFilter) return false
+    if (f.tournament_id?.toString() !== tournamentFilter) return false
     if (statusFilter && f.status !== statusFilter) return false
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
@@ -95,7 +105,7 @@ export function FixturesManager({ filterDivision }: { filterDivision?: string })
       if (!t1.includes(q) && !t2.includes(q)) return false
     }
     return true
-  })
+  }) : []
 
   const loadData = async () => {
     setLoading(true)
@@ -163,6 +173,7 @@ export function FixturesManager({ filterDivision }: { filterDivision?: string })
         ground: f.ground || '',
         date_time: formatForInput(f.date_time),
         status: f.status || FIXTURE_STATUSES[0],
+        stage: f.stage || 'round-robin',
         referee: f.referee || '',
         man_of_the_match_id: f.man_of_the_match_id?.toString() || '',
         winner_team_id: f.winner_team_id?.toString() || '',
@@ -171,19 +182,28 @@ export function FixturesManager({ filterDivision }: { filterDivision?: string })
       })
     } else {
       setEditingId(null)
-      setFormData({
-        tournament_id: tournaments.length > 0 ? tournaments[0].id.toString() : '',
+      
+      const validTournaments = displayedTournaments.filter(t => t.phase !== 'completed')
+      let defaultTournamentId = formData.tournament_id;
+      
+      if (!defaultTournamentId || !validTournaments.some(t => t.id.toString() === defaultTournamentId)) {
+         defaultTournamentId = validTournaments.length > 0 ? validTournaments[0].id.toString() : '';
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        tournament_id: defaultTournamentId,
         team1_id: '',
         team2_id: '',
-        ground: '',
         date_time: formatForInput(new Date().toISOString()),
         status: FIXTURE_STATUSES[0],
+        stage: 'round-robin',
         referee: '',
         man_of_the_match_id: '',
         winner_team_id: '',
         best_of: 3,
         score_sets: []
-      })
+      }))
     }
     setIsModalOpen(true)
   }
@@ -193,7 +213,7 @@ export function FixturesManager({ filterDivision }: { filterDivision?: string })
     setEditingId(null)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault()
     
     if (formData.team1_id === formData.team2_id && formData.team1_id) {
@@ -271,6 +291,7 @@ export function FixturesManager({ filterDivision }: { filterDivision?: string })
       ground: formData.ground,
       date_time: parsedDateTime,
       status: formData.status,
+      stage: formData.stage,
       referee: formData.referee,
       man_of_the_match_id: parseDbId(formData.man_of_the_match_id),
       best_of: formData.best_of,
@@ -351,7 +372,7 @@ export function FixturesManager({ filterDivision }: { filterDivision?: string })
             value={tournamentFilter}
             onChange={e => setTournamentFilter(e.target.value)}
           >
-            <option value="">All Tournaments</option>
+            <option value="" disabled>-- Select a Tournament --</option>
             {displayedTournaments.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
           <select 
@@ -364,7 +385,7 @@ export function FixturesManager({ filterDivision }: { filterDivision?: string })
               <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
             ))}
           </select>
-          <Button onClick={() => handleOpenModal()} className="w-full md:w-auto text-xs border-purple-500/20 bg-purple-500/10 text-purple-500 hover:bg-purple-500 hover:text-black">
+          <Button onClick={() => handleOpenModal()} disabled={!tournamentFilter} className="w-full md:w-auto text-xs border-purple-500/20 bg-purple-500/10 text-purple-500 hover:bg-purple-500 hover:text-black disabled:opacity-50 disabled:cursor-not-allowed">
             <Plus className="h-4 w-4 mr-2" /> Schedule Match
           </Button>
         </div>
@@ -380,6 +401,12 @@ export function FixturesManager({ filterDivision }: { filterDivision?: string })
         <div className="flex items-center justify-center py-12">
           <div className="w-8 h-8 rounded-full border-2 border-purple-500 border-t-transparent animate-spin"></div>
         </div>
+      ) : !tournamentFilter ? (
+        <div className="text-center py-16 border border-dashed border-zinc-800 bg-zinc-900/20">
+          <CalendarDays className="w-8 h-8 text-zinc-600 mx-auto mb-4" />
+          <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">Tournament specific view</p>
+          <p className="text-[10px] text-zinc-500 max-w-md mx-auto mb-4">You must select a tournament from the dropdown above to view and manage its fixtures.</p>
+        </div>
       ) : displayedFixtures.length === 0 ? (
         <div className="text-center py-12 border border-dashed border-zinc-800">
           <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">No fixtures match the criteria</p>
@@ -394,72 +421,98 @@ export function FixturesManager({ filterDivision }: { filterDivision?: string })
           )}
         </div>
       ) : (
-        <div className="space-y-2">
-          {displayedFixtures.map((f) => (
-            <div key={f.id} className="flex items-center justify-between py-4 border-b border-zinc-900 hover:bg-zinc-900/40 px-3 transition-colors group cursor-default">
-              <div className="flex items-center gap-4 flex-1">
-                <div className="w-12 h-12 rounded-sm bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-500 shrink-0">
-                   <CalendarDays className="w-5 h-5" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-[10px] text-purple-500 font-bold tracking-widest uppercase mb-1">
-                    [{f.status}] {formatDateLabel(f.date_time)}
-                  </p>
-                  <h3 className="text-base sm:text-lg font-medium text-white flex items-center gap-2 flex-wrap">
-                    <span className={!f.team1?.name ? "text-zinc-500 italic" : ""}>{f.team1?.name || 'TBD'}</span>
-                    <span className="text-zinc-500 text-xs px-2">vs</span>
-                    <span className={!f.team2?.name ? "text-zinc-500 italic" : ""}>{f.team2?.name || 'TBD'}</span>
-                  </h3>
-                  {f.score?.resultMessage && (
-                    <div className="mt-1.5 flex items-center">
-                      <span className="text-[12px] font-bold text-white bg-zinc-800 px-2 py-0.5 rounded-sm">
-                        {f.score.resultMessage}
-                      </span>
+        <div className="space-y-8">
+          {FIXTURE_STAGES.map(stage => {
+            const stageFixtures = displayedFixtures.filter(f => (f.stage || 'round-robin') === stage);
+            if (stageFixtures.length === 0) return null;
+            
+            return (
+              <div key={stage} className="space-y-2">
+                <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 border-b border-zinc-900 pb-2 flex items-center gap-2">
+                   <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div>
+                   {stage.replace('-', ' ')}
+                </h3>
+                <div className="space-y-2">
+                  {stageFixtures.map((f) => (
+                    <div key={f.id} className={`flex items-center justify-between py-4 border-b hover:bg-zinc-900/40 px-3 transition-colors group cursor-default ${f.status === 'live' ? 'border-amber-500/30 bg-amber-500/5' : 'border-zinc-900'}`}>
+                      <div className="flex items-center gap-4 flex-1">
+                        <div className={`w-12 h-12 rounded-sm border flex items-center justify-center shrink-0 ${f.status === 'live' ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' : 'bg-zinc-900 border-zinc-800 text-zinc-500'}`}>
+                           <CalendarDays className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-[10px] font-bold tracking-widest uppercase mb-1 flex items-center gap-2">
+                            {f.status === 'live' ? (
+                              <span className="text-amber-500 flex items-center gap-1.5">
+                                <span className="flex h-1.5 w-1.5 relative">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
+                                </span>
+                                <span>[LIVE]</span>
+                              </span>
+                            ) : (
+                              <span className="text-purple-500">[{f.status}]</span>
+                            )}
+                            <span className="text-zinc-500">{formatDateLabel(f.date_time)}</span>
+                          </p>
+                          <h3 className="text-base sm:text-lg font-medium text-white flex items-center gap-2 flex-wrap">
+                            <span className={!f.team1?.name ? "text-zinc-500 italic" : ""}>{f.team1?.name || 'TBD'}</span>
+                            <span className="text-zinc-500 text-xs px-2">vs</span>
+                            <span className={!f.team2?.name ? "text-zinc-500 italic" : ""}>{f.team2?.name || 'TBD'}</span>
+                          </h3>
+                          {f.score?.resultMessage && (
+                            <div className="mt-1.5 flex items-center">
+                              <span className="text-[12px] font-bold text-white bg-zinc-800 px-2 py-0.5 rounded-sm">
+                                {f.score.resultMessage}
+                              </span>
+                            </div>
+                          )}
+                          {f.winner?.name && (
+                            <div className="mt-1.5 flex items-center">
+                              <span className="text-[10px] uppercase tracking-widest font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-sm border border-amber-500/20">
+                                Winner: {f.winner.name}
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex flex-wrap items-center gap-3 mt-1.5">
+                            {f.tournaments?.name && (
+                              <span className="text-[10px] text-zinc-400 font-normal tracking-wide bg-zinc-900 px-1.5 py-0.5 rounded-sm">
+                                {f.tournaments.name}
+                              </span>
+                            )}
+                            {f.ground && (
+                              <span className="text-[10px] text-zinc-500 italic font-normal tracking-wide">
+                                Ground: {f.ground}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity ml-4">
+                        {f.tournaments?.phase === 'completed' ? (
+                          <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest px-2 py-1 bg-zinc-900 border border-zinc-800 rounded-sm">Locked</span>
+                        ) : (
+                          <>
+                            <Button variant="ghost" size="sm" onClick={() => handleOpenModal(f)} className="h-8 px-2 text-zinc-400 hover:text-purple-500">
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            {confirmDeleteId === f.id ? (
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(f.id)} className="h-8 px-2 text-white bg-red-500 hover:bg-red-600">
+                                Confirm
+                              </Button>
+                            ) : (
+                              <Button variant="ghost" size="sm" onClick={() => setConfirmDeleteId(f.id)} className="h-8 px-2 text-zinc-400 hover:text-red-500">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
-                  )}
-                  {f.winner?.name && (
-                    <div className="mt-1.5 flex items-center">
-                      <span className="text-[10px] uppercase tracking-widest font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-sm border border-amber-500/20">
-                        Winner: {f.winner.name}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex flex-wrap items-center gap-3 mt-1.5">
-                    {f.tournaments?.name && (
-                      <span className="text-[10px] text-zinc-400 font-normal tracking-wide bg-zinc-900 px-1.5 py-0.5 rounded-sm">
-                        {f.tournaments.name}
-                      </span>
-                    )}
-                    {f.ground && (
-                      <span className="text-[10px] text-zinc-500 italic font-normal tracking-wide">
-                        Ground: {f.ground}
-                      </span>
-                    )}
-                  </div>
+                  ))}
                 </div>
               </div>
-              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity ml-4">
-                {f.tournaments?.phase === 'completed' ? (
-                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest px-2 py-1 bg-zinc-900 border border-zinc-800 rounded-sm">Locked</span>
-                ) : (
-                  <>
-                    <Button variant="ghost" size="sm" onClick={() => handleOpenModal(f)} className="h-8 px-2 text-zinc-400 hover:text-purple-500">
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                    {confirmDeleteId === f.id ? (
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(f.id)} className="h-8 px-2 text-white bg-red-500 hover:bg-red-600">
-                        Confirm
-                      </Button>
-                    ) : (
-                      <Button variant="ghost" size="sm" onClick={() => setConfirmDeleteId(f.id)} className="h-8 px-2 text-zinc-400 hover:text-red-500">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
@@ -485,7 +538,7 @@ export function FixturesManager({ filterDivision }: { filterDivision?: string })
 
             <form onSubmit={handleSubmit} className="space-y-6">
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold block">Tournament</label>
                   <select 
@@ -502,15 +555,36 @@ export function FixturesManager({ filterDivision }: { filterDivision?: string })
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold block">Status</label>
+                  <label className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-zinc-500 font-bold">
+                    Status
+                    {formData.status === 'live' && (
+                      <span className="flex h-1.5 w-1.5 relative">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
+                      </span>
+                    )}
+                  </label>
                   <select 
                     required
-                    className="w-full bg-zinc-900 border border-zinc-800 p-3 text-sm focus:outline-none focus:border-purple-500/50 text-white transition-colors"
+                    className={`w-full border p-3 text-sm focus:outline-none focus:border-purple-500/50 transition-colors uppercase font-bold tracking-widest ${formData.status === 'live' ? 'bg-amber-500/10 border-amber-500/50 text-amber-500' : 'bg-zinc-900 border-zinc-800 text-white'}`}
                     value={formData.status}
                     onChange={e => setFormData(p => ({ ...p, status: e.target.value }))}
                   >
                     {FIXTURE_STATUSES.map((status) => (
-                      <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
+                      <option key={status} value={status} className="bg-zinc-900 text-white uppercase">{status}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold block">Stage</label>
+                  <select 
+                    required
+                    className="w-full bg-zinc-900 border border-zinc-800 p-3 text-sm focus:outline-none focus:border-purple-500/50 text-white transition-colors"
+                    value={formData.stage}
+                    onChange={e => setFormData(p => ({ ...p, stage: e.target.value }))}
+                  >
+                    {FIXTURE_STAGES.map((stage) => (
+                      <option key={stage} value={stage} className="bg-zinc-900 text-white uppercase">{stage}</option>
                     ))}
                   </select>
                 </div>

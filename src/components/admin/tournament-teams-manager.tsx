@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -82,7 +83,7 @@ export function TournamentTeamsManager({ filterDivision }: { filterDivision?: st
     loadData()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleAssign = async (e: React.FormEvent) => {
+  const handleAssign = async (e: any) => {
     e.preventDefault()
     
     if (!selectedTournament || !selectedTeam) {

@@ -1,9 +1,12 @@
+import React from 'react';
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Trophy, Edit2, Trash2, Plus, X, AlignEndHorizontal } from "lucide-react"
+import { Trophy, Edit2, Trash2, Plus, X, AlignEndHorizontal, Lock } from "lucide-react"
 import { TournamentStandings } from "@/components/standings/tournament-standings"
+
+import { ImageUpload } from "@/components/ui/image-upload"
 
 type Tournament = {
   id: number | string
@@ -11,6 +14,7 @@ type Tournament = {
   division: string
   phase: string
   show_champion_banner: boolean
+  banner_url?: string
 }
 
 export function TournamentsManager({ filterDivision }: { filterDivision?: string }) {
@@ -23,11 +27,16 @@ export function TournamentsManager({ filterDivision }: { filterDivision?: string
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | string | null>(null)
   const [expandedStandingsId, setExpandedStandingsId] = useState<number | string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [passwordOverrideTarget, setPasswordOverrideTarget] = useState<Tournament | null>(null)
+  const [overridePassword, setOverridePassword] = useState('')
+  const [overrideError, setOverrideError] = useState<string | null>(null)
+  const [isVerifying, setIsVerifying] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     division: 'Division 1',
     phase: 'upcoming',
-    show_champion_banner: false
+    show_champion_banner: false,
+    banner_url: ''
   })
 
   // Set default division in form based on active tab
@@ -64,7 +73,8 @@ export function TournamentsManager({ filterDivision }: { filterDivision?: string
         name: t.name || '',
         division: t.division || 'Division 1',
         phase: t.phase || 'upcoming',
-        show_champion_banner: t.show_champion_banner || false
+        show_champion_banner: t.show_champion_banner || false,
+        banner_url: t.banner_url || ''
       })
     } else {
       setEditingId(null)
@@ -72,7 +82,8 @@ export function TournamentsManager({ filterDivision }: { filterDivision?: string
         name: '',
         division: filterDivision || 'Division 1',
         phase: 'upcoming',
-        show_champion_banner: false
+        show_champion_banner: false,
+        banner_url: ''
       })
     }
     setIsModalOpen(true)
@@ -83,7 +94,7 @@ export function TournamentsManager({ filterDivision }: { filterDivision?: string
     setEditingId(null)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault()
     setIsSubmitting(true)
     setError(null)
@@ -124,6 +135,34 @@ export function TournamentsManager({ filterDivision }: { filterDivision?: string
     } else {
       setConfirmDeleteId(null)
       await loadTournaments()
+    }
+  }
+
+  const handleVerifyOverride = async (e: any) => {
+    e.preventDefault()
+    setOverrideError(null)
+    setIsVerifying(true)
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user?.email) throw new Error("No active user found")
+      
+      const { error: authErr } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: overridePassword
+      })
+      
+      if (authErr) throw authErr
+      
+      if (passwordOverrideTarget) {
+        handleOpenModal(passwordOverrideTarget)
+      }
+      setPasswordOverrideTarget(null)
+      setOverridePassword('')
+    } catch (err: any) {
+      setOverrideError('Invalid authorization key')
+    } finally {
+      setIsVerifying(false)
     }
   }
 
@@ -180,7 +219,7 @@ export function TournamentsManager({ filterDivision }: { filterDivision?: string
                 </div>
                 <div className="flex items-center gap-3">
                   {t.phase === 'completed' ? (
-                     <div className="flex items-center gap-3">
+                     <div className="flex items-center gap-2 group">
                        <Button 
                          variant={expandedStandingsId === t.id ? "default" : "outline"}
                          size="sm" 
@@ -190,7 +229,17 @@ export function TournamentsManager({ filterDivision }: { filterDivision?: string
                          <AlignEndHorizontal className="h-4 w-4 mr-2" />
                          {expandedStandingsId === t.id ? 'Close Standings' : 'View Standings'}
                        </Button>
-                       <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest px-3 py-1.5 border border-zinc-800 bg-zinc-900 mx-2">Completed</span>
+                       <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest px-3 py-1.5 border border-zinc-800 bg-zinc-900 ml-1">Completed</span>
+                       
+                       <Button 
+                         variant="ghost" 
+                         size="sm" 
+                         onClick={() => setPasswordOverrideTarget(t)} 
+                         className="h-8 px-2 ml-1 text-zinc-600 hover:text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                         title="Unlock completed tournament"
+                       >
+                         <Lock className="h-4 w-4" />
+                       </Button>
                      </div>
                   ) : (
                     <>
@@ -236,6 +285,64 @@ export function TournamentsManager({ filterDivision }: { filterDivision?: string
         </div>
       )}
 
+      {passwordOverrideTarget && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-zinc-800 w-full max-w-md p-6 relative">
+            <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-zinc-500 hover:text-white" onClick={() => {
+              setPasswordOverrideTarget(null)
+              setOverridePassword('')
+              setOverrideError(null)
+            }}>
+              <X className="h-4 w-4" />
+            </Button>
+            
+            <div className="mb-6">
+              <h3 className="text-xl font-bold tracking-tight italic text-amber-500 flex items-center gap-2 mb-2">
+                <Lock className="h-5 w-5" /> Override Protection
+              </h3>
+              <p className="text-xs text-zinc-400 leading-relaxed uppercase tracking-widest font-bold">
+                The tournament "{passwordOverrideTarget.name}" is completed. Provide master password to unlock integrity protections.
+              </p>
+            </div>
+            
+            <form onSubmit={handleVerifyOverride} className="space-y-4">
+              {overrideError && (
+                <div className="bg-red-500/10 border border-red-500/50 text-red-500 text-[10px] p-3 font-bold uppercase tracking-widest text-center">
+                  {overrideError}
+                </div>
+              )}
+              
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold block">Authorization Key</label>
+                <Input 
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  className="bg-black border-zinc-800 focus-visible:ring-amber-500 tracking-widest text-center"
+                  value={overridePassword}
+                  onChange={e => setOverridePassword(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              
+              <div className="flex justify-end gap-3 pt-4 border-t border-zinc-900 mt-6">
+                <Button type="button" variant="ghost" onClick={() => {
+                   setPasswordOverrideTarget(null)
+                   setOverridePassword('')
+                   setOverrideError(null)
+                }} className="text-xs uppercase tracking-widest font-bold">
+                  Abort
+                </Button>
+                <Button type="submit" disabled={isVerifying} className="bg-amber-500 text-black hover:bg-amber-600 text-xs uppercase tracking-widest font-bold">
+                  {isVerifying ? 'Verifying...' : 'Unlock Editor'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Main Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={handleCloseModal}></div>
@@ -288,8 +395,18 @@ export function TournamentsManager({ filterDivision }: { filterDivision?: string
                 >
                   <option value="upcoming">Upcoming</option>
                   <option value="round-robin">Round Robin</option>
+                  <option value="knockout">Knockout</option>
                   <option value="completed">Completed</option>
                 </select>
+              </div>
+
+              <div className="space-y-4">
+                <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold block">Tournament Banner Background</label>
+                <ImageUpload 
+                  bucket="tournament-banners"
+                  value={formData.banner_url}
+                  onChange={(url) => setFormData(p => ({ ...p, banner_url: url }))}
+                />
               </div>
 
               <div className="flex items-center gap-3 pt-2">

@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom"
-import { Trophy, Users, LayoutDashboard, LogOut, Flag, UserSquare2, CalendarDays, Shield } from "lucide-react"
+import { Trophy, Users, LayoutDashboard, LogOut, Flag, UserSquare2, CalendarDays, Shield, Briefcase } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabase/client"
 
@@ -10,6 +10,7 @@ const navItems = [
   { icon: Flag, label: "Teams", href: "/admin/teams" },
   { icon: UserSquare2, label: "Players", href: "/admin/players" },
   { icon: CalendarDays, label: "Fixtures", href: "/admin/fixtures" },
+  { icon: Briefcase, label: "Sponsors", href: "/admin/sponsors" }
 ]
 
 export function AdminSidebar() {

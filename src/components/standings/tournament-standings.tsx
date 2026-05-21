@@ -5,6 +5,7 @@ import { Trophy } from "lucide-react"
 type Team = {
   id: number
   name: string
+  logo_url: string | null
 }
 
 type Fixture = {
@@ -25,6 +26,7 @@ type Fixture = {
 type Standing = {
   team_id: number
   team_name: string
+  logo_url: string | null
   played: number
   wins: number
   draws: number
@@ -47,7 +49,7 @@ export function TournamentStandings({ tournamentId }: { tournamentId: number | s
       setError(null)
       try {
         const [ttRes, fixRes] = await Promise.all([
-          supabase.from('tournament_teams').select('team_id, teams!inner(id, name)').eq('tournament_id', tournamentId),
+          supabase.from('tournament_teams').select('team_id, teams!inner(id, name, logo_url)').eq('tournament_id', tournamentId),
           supabase.from('fixtures').select('id, team1_id, team2_id, winner_team_id, status, best_of, score').eq('tournament_id', tournamentId).eq('status', 'completed')
         ])
 
@@ -77,6 +79,7 @@ export function TournamentStandings({ tournamentId }: { tournamentId: number | s
       table.set(t.id, {
         team_id: t.id,
         team_name: t.name,
+        logo_url: t.logo_url,
         played: 0,
         wins: 0,
         draws: 0,
@@ -95,8 +98,8 @@ export function TournamentStandings({ tournamentId }: { tournamentId: number | s
       const t2 = table.get(f.team2_id)
       
       // If teams are not in the tournament teams list, initialize them
-      if (!t1 && f.team1_id) table.set(f.team1_id, { team_id: f.team1_id, team_name: 'Unknown', played: 0, wins: 0, draws: 0, losses: 0, points: 0, scored: 0, against: 0, difference: 0 })
-      if (!t2 && f.team2_id) table.set(f.team2_id, { team_id: f.team2_id, team_name: 'Unknown', played: 0, wins: 0, draws: 0, losses: 0, points: 0, scored: 0, against: 0, difference: 0 })
+      if (!t1 && f.team1_id) table.set(f.team1_id, { team_id: f.team1_id, team_name: 'Unknown', logo_url: null, played: 0, wins: 0, draws: 0, losses: 0, points: 0, scored: 0, against: 0, difference: 0 })
+      if (!t2 && f.team2_id) table.set(f.team2_id, { team_id: f.team2_id, team_name: 'Unknown', logo_url: null, played: 0, wins: 0, draws: 0, losses: 0, points: 0, scored: 0, against: 0, difference: 0 })
 
       const team1 = table.get(f.team1_id)!
       const team2 = table.get(f.team2_id)!
@@ -208,7 +211,16 @@ export function TournamentStandings({ tournamentId }: { tournamentId: number | s
           {standings.map((s, idx) => (
             <tr key={s.team_id} className="border-b border-zinc-900 hover:bg-zinc-900/30 transition-colors">
               <td className="px-4 py-3 text-zinc-400 font-mono text-xs">{idx + 1}</td>
-              <td className="px-4 py-3 font-bold text-white whitespace-nowrap">{s.team_name}</td>
+              <td className="px-4 py-3 font-bold text-white whitespace-nowrap">
+                <div className="flex items-center gap-2">
+                  {s.logo_url && (
+                    <div className="w-5 h-5 shrink-0 bg-white/5 rounded-sm p-0.5 flex items-center justify-center">
+                      <img src={s.logo_url} alt={s.team_name} className="w-full h-full object-contain" />
+                    </div>
+                  )}
+                  <span>{s.team_name}</span>
+                </div>
+              </td>
               <td className="px-2 py-3 text-center text-zinc-400">{s.played}</td>
               <td className="px-2 py-3 text-center text-zinc-400">{s.wins}</td>
               <td className="px-2 py-3 text-center text-zinc-400">{s.draws}</td>
