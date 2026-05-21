@@ -21,6 +21,7 @@ type Tournament = {
   division: string;
   phase: string;
   show_champion_banner: boolean;
+  is_current_champion?: boolean;
   banner_url?: string;
 };
 
@@ -97,10 +98,10 @@ export default function HomePage() {
 
       // Champion extraction logic
       const latestDiv1 = loadedTournaments.find(
-        (t) => t.division === "Division 1" && t.phase === "completed",
+        (t) => t.division === "Division 1" && t.is_current_champion,
       );
       const latestDiv2 = loadedTournaments.find(
-        (t) => t.division === "Division 2" && t.phase === "completed",
+        (t) => t.division === "Division 2" && t.is_current_champion,
       );
 
       const fetchChampion = async (tournament: Tournament) => {

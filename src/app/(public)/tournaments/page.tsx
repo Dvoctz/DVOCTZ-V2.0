@@ -58,7 +58,7 @@ export default function TournamentsArchivePage() {
           supabase
             .from("tournaments")
             .select("*")
-            .order("start_date", { ascending: false }),
+            .order("id", { ascending: false }),
           supabase.from("clubs").select("*", { count: "exact", head: true }),
           supabase.from("fixtures").select("*", { count: "exact", head: true }),
           supabase.from("players").select("*", { count: "exact", head: true }),
@@ -176,7 +176,12 @@ export default function TournamentsArchivePage() {
     fetchData();
   }, []);
 
-  const activeTournaments = tournaments.filter((t) => t.phase !== "completed");
+  const activeTournaments = tournaments.filter(
+    (t) =>
+      t.phase === "upcoming" ||
+      t.phase === "round-robin" ||
+      t.phase === "knockout",
+  );
   const historicTournaments = tournaments.filter(
     (t) => t.phase === "completed",
   );
