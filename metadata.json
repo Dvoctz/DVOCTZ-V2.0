@@ -1,5 +1,5 @@
 {
-  "name": "DVOC V2 - Tournament Platform",
+  "name": "DVOC TZ - Powered By ZAP",
   "description": "High-end sports tournament platform with an editorial dark luxury aesthetic.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
