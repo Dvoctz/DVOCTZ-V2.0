@@ -45,7 +45,9 @@ export default function RefereeConsole() {
     setSelectedFixture(f);
     
     // Initialize score if it doesn't have structure yet
-    const sets = f.score?.sets || Array(f.best_of || 3).fill({ team1Points: 0, team2Points: 0 });
+    const sets = f.score?.sets?.length > 0 
+      ? f.score.sets 
+      : Array.from({ length: f.best_of || 3 }, () => ({ team1Points: 0, team2Points: 0 }));
     
     // Find the first set where a team hasn't won yet, or we'll just take the last active set
     let currentSetIdx = 0;
@@ -92,28 +94,33 @@ export default function RefereeConsole() {
     }
   }, []);
 
-  const changeScore = async (team: "t1" | "t2", diff: 1 | -1) => {
+  const changeScore = async (team: "t1" | "t2") => {
     if (!selectedFixture) return;
 
-    let currentSets = selectedFixture.score?.sets ? [...selectedFixture.score.sets] : Array(selectedFixture.best_of).fill({ team1Points: 0, team2Points: 0 });
+    let currentSets = selectedFixture.score?.sets?.length > 0 
+      ? JSON.parse(JSON.stringify(selectedFixture.score.sets))
+      : Array.from({ length: selectedFixture.best_of || 3 }, () => ({ team1Points: 0, team2Points: 0 }));
     
-    // Ensure we are working with deep copies
-    currentSets = currentSets.map(s => ({...s}));
+    // Ensure activeSetIdx exists
+    while (currentSets.length <= activeSetIdx) {
+      currentSets.push({ team1Points: 0, team2Points: 0 });
+    }
 
     const activeSet = currentSets[activeSetIdx];
     
-    // Push to history for undo if we are adding a point
-    if (diff === 1) {
-      setHistory((prev) => [...prev, { sets: JSON.parse(JSON.stringify(currentSets)) }]);
+    // Push to history for undo
+    setHistory((prev) => [...prev, { sets: JSON.parse(JSON.stringify(currentSets)), serviceSide }]);
       
-      // Auto-switch service on point win if it was the other team's serve (common logic, but since it's just a foundation, we can toggle it visually)
-      setServiceSide(team);
-    }
-
-    if (team === "t1") {
-      activeSet.team1Points = Math.max(0, (activeSet.team1Points || 0) + diff);
+    if (serviceSide === team) {
+      // Serving team won rally: add point, keep service
+      if (team === "t1") {
+        activeSet.team1Points = (activeSet.team1Points || 0) + 1;
+      } else {
+        activeSet.team2Points = (activeSet.team2Points || 0) + 1;
+      }
     } else {
-      activeSet.team2Points = Math.max(0, (activeSet.team2Points || 0) + diff);
+      // Receiving team won rally: NO point added, change service
+      setServiceSide(team);
     }
 
     // Determine total scores
@@ -171,6 +178,10 @@ export default function RefereeConsole() {
         team2Score
       }
     };
+    
+    if (previousState.serviceSide) {
+      setServiceSide(previousState.serviceSide);
+    }
     
     setSelectedFixture(updatedFixture);
     setHistory((prev) => prev.slice(0, -1));
@@ -335,7 +346,7 @@ export default function RefereeConsole() {
               </div>
               
               <button 
-                onClick={() => changeScore("t1", 1)}
+                onClick={() => changeScore("t1")}
                 className="p-8 bg-zinc-900 hover:bg-zinc-800 text-white transition-colors border-t border-zinc-800 select-none active:bg-amber-500 active:text-black flex justify-center"
               >
                 <div className="text-4xl font-black">+1</div>
@@ -361,7 +372,7 @@ export default function RefereeConsole() {
               </div>
               
               <button 
-                onClick={() => changeScore("t2", 1)}
+                onClick={() => changeScore("t2")}
                 className="p-8 bg-zinc-900 hover:bg-zinc-800 text-white transition-colors border-t border-zinc-800 select-none active:bg-amber-500 active:text-black flex justify-center"
               >
                 <div className="text-4xl font-black">+1</div>

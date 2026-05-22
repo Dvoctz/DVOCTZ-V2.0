@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Trophy,
@@ -9,6 +10,7 @@ import {
   CalendarDays,
   Shield,
   Briefcase,
+  PlaySquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase/client";
@@ -26,6 +28,18 @@ const navItems = [
 export function AdminSidebar({ onClose }: { onClose?: () => void }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const [isAdminOrRef, setIsAdminOrRef] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        const role = session.user.user_metadata?.role || "admin";
+        if (role === "admin" || role === "fixture_manager" || session.user.email?.includes('admin')) {
+          setIsAdminOrRef(true);
+        }
+      }
+    });
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -84,6 +98,38 @@ export function AdminSidebar({ onClose }: { onClose?: () => void }) {
               </li>
             );
           })}
+          {isAdminOrRef && (
+            <li key="referee-console" className="mt-8">
+              <Link
+                to="/referee"
+                onClick={onClose}
+                className={cn(
+                  "flex items-center gap-3 text-sm group cursor-pointer transition-colors",
+                  location.pathname === "/referee" || location.pathname.startsWith("/referee")
+                    ? "text-amber-500 font-bold"
+                    : "text-zinc-400 hover:text-amber-500",
+                )}
+              >
+                <div
+                  className={cn(
+                    "w-1.5 h-1.5 rounded-full shrink-0",
+                    location.pathname === "/referee" || location.pathname.startsWith("/referee")
+                      ? "bg-amber-500"
+                      : "bg-zinc-800 group-hover:bg-amber-500 transition-colors",
+                  )}
+                ></div>
+                <PlaySquare
+                  className={cn(
+                    "h-4 w-4",
+                    location.pathname === "/referee" || location.pathname.startsWith("/referee")
+                      ? "text-amber-500"
+                      : "group-hover:text-amber-500 transition-colors",
+                  )}
+                />
+                <span>Referee Console</span>
+              </Link>
+            </li>
+          )}
         </ul>
       </div>
       <div className="mt-auto flex flex-col gap-6">
