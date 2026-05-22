@@ -15,8 +15,17 @@ import AdminFixtures from "@/app/admin/fixtures/page"
 import AdminClubs from "@/app/admin/clubs/page"
 import AdminSponsors from "@/app/admin/sponsors/page"
 import LoginPage from "@/app/auth/login/page"
+import { RefereeLayout } from "@/components/layout/referee-layout"
+import RefereeConsole from "@/app/referee/page"
 
 const router = createBrowserRouter([
+  {
+    path: "/referee",
+    element: <RefereeLayout />,
+    children: [
+      { index: true, element: <RefereeConsole /> },
+    ]
+  },
   {
     path: "/",
     element: <PublicLayout />,
