@@ -239,12 +239,18 @@ export default function RefereeConsole() {
        team2Score: team2MatchScore
     };
 
+    let winner_team_id = null;
+    if (team1MatchScore > team2MatchScore) winner_team_id = selectedFixture.team1_id;
+    else if (team2MatchScore > team1MatchScore) winner_team_id = selectedFixture.team2_id;
+
     try {
       const { error } = await supabase
         .from('fixtures')
         .update({ 
           score: officialScore,
           is_live: false,
+          live_state: null,
+          winner_team_id: winner_team_id,
           status: 'completed' 
         })
         .eq('id', selectedFixture.id);

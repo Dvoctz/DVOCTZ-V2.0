@@ -74,9 +74,9 @@ export default function HomePage() {
         supabase
           .from("fixtures")
           .select(
-            "id, tournament_id, team1_id, team2_id, status, date_time, ground, best_of, team1:teams!team1_id(name, logo_url), team2:teams!team2_id(name, logo_url), tournaments(name, division, phase)",
+            "id, tournament_id, team1_id, team2_id, status, is_live, live_state, date_time, ground, best_of, team1:teams!team1_id(name, logo_url), team2:teams!team2_id(name, logo_url), tournaments(name, division, phase)",
           )
-          .eq("status", "upcoming")
+          .in("status", ["upcoming", "live"])
           .order("date_time", { ascending: true })
           .limit(20),
         supabase
@@ -92,7 +92,12 @@ export default function HomePage() {
 
       const loadedTournaments = tRes.data || [];
       setTournaments(loadedTournaments);
-      if (uRes.data) setUpcomingFixtures(uRes.data);
+      if (uRes.data) {
+        setUpcomingFixtures(uRes.data.map((f: any) => ({
+          ...f,
+          score: f.is_live && f.live_state ? f.live_state : f.score
+        })));
+      }
       if (rRes.data) setRecentFixtures(rRes.data);
       if (sRes.data) setSponsors(sRes.data);
 
@@ -284,9 +289,20 @@ export default function HomePage() {
             {f.team1?.name || "TBD"}
           </span>
         </div>
-        <span className="text-[10px] text-zinc-600 font-bold uppercase shrink-0">
-          vs
-        </span>
+        {f.status === "live" || (f as any).is_live ? (
+          <div className="flex flex-col items-center justify-center shrink-0">
+             <span className="text-[10px] text-amber-500 font-bold uppercase tracking-widest animate-pulse mb-1">
+               Live
+             </span>
+             <span className="text-xl font-black text-white tabular-nums tracking-tighter">
+               {f.score?.team1Score ?? 0} - {f.score?.team2Score ?? 0}
+             </span>
+          </div>
+        ) : (
+          <span className="text-[10px] text-zinc-600 font-bold uppercase shrink-0">
+            vs
+          </span>
+        )}
         <div className="flex-1 min-w-0 text-center flex flex-col items-center justify-center">
           {f.team2?.logo_url ? (
             <div className="w-8 h-8 mb-2 bg-white/5 rounded-full p-1 border border-zinc-800 flex items-center justify-center overflow-hidden">

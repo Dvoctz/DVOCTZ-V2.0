@@ -52,7 +52,7 @@ export default function TournamentDetailPage() {
           supabase
             .from("fixtures")
             .select(
-              "id, team1_id, team2_id, status, stage, date_time, ground, best_of, referee, score, team1:teams!team1_id(name, logo_url), team2:teams!team2_id(name, logo_url), winner:teams!winner_team_id(name)",
+              "id, team1_id, team2_id, status, is_live, live_state, stage, date_time, ground, best_of, referee, score, team1:teams!team1_id(name, logo_url), team2:teams!team2_id(name, logo_url), winner:teams!winner_team_id(name)",
             )
             .eq("tournament_id", id)
             .order("date_time", { ascending: true }),
@@ -65,7 +65,11 @@ export default function TournamentDetailPage() {
         if (tRes.error) throw tRes.error;
         setTournament(tRes.data);
         if (!fRes.error && fRes.data) {
-          setFixtures(fRes.data);
+          const processedFixtures = fRes.data.map(f => ({
+             ...f,
+             score: f.is_live && f.live_state ? f.live_state : f.score
+          }));
+          setFixtures(processedFixtures);
         }
         if (!rRes.error && rRes.data) {
           setRosters(rRes.data);
