@@ -16,11 +16,11 @@ export function LiveTimer({ timerState, className = "" }: { timerState?: TimerSt
     }
 
     const computeTime = () => {
-      let current = timerState.elapsedBeforeStart || 0;
+      let current = typeof timerState.elapsedBeforeStart === 'number' ? timerState.elapsedBeforeStart : 0;
       if (timerState.isRunning && timerState.startedAt) {
         current += Date.now() - timerState.startedAt;
       }
-      return current;
+      return Math.max(0, current); // Ensure non-negative
     };
 
     setTotalMs(computeTime());

@@ -233,6 +233,7 @@ export default function RefereeConsole() {
     }
 
     const newLiveState = {
+      ...selectedFixture.live_state,
       team1Score: activeSet.team1Points,
       team2Score: activeSet.team2Points,
       servingTeam: nextServiceSide,
@@ -262,6 +263,7 @@ export default function RefereeConsole() {
     const actSet = restoredSets[activeSetIdx] || { team1Points: 0, team2Points: 0 };
 
     const newLiveState = {
+      ...selectedFixture.live_state,
       team1Score: actSet.team1Points,
       team2Score: actSet.team2Points,
       servingTeam: nextServiceSide,
