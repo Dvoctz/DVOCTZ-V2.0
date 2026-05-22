@@ -28,7 +28,7 @@ type Fixture = {
   team2?: { name: string; logo_url?: string };
   score: {
     resultMessage?: string;
-    sets?: { team1Points: number; team2Points: number }[];
+    sets?: { team1Points: number; team2Points: number; winnerOverrideId?: string }[];
     team1Score?: number;
     team2Score?: number;
   } | null;
@@ -191,11 +191,27 @@ export default function TournamentDetailPage() {
               <span className="text-[9px] text-zinc-500 uppercase font-black tracking-widest mb-1.5">
                 Set {idx + 1}
               </span>
-              <span className="text-sm font-bold text-white leading-none">
+              <span
+                className={`text-sm font-bold leading-none ${
+                  (set.winnerOverrideId &&
+                    set.winnerOverrideId === f.team1_id?.toString()) ||
+                  (!set.winnerOverrideId && set.team1Points > set.team2Points)
+                    ? "text-white"
+                    : "text-zinc-400"
+                }`}
+              >
                 {set.team1Points}
               </span>
               <div className="w-full h-px bg-zinc-800 my-1.5" />
-              <span className="text-sm font-bold text-white leading-none">
+              <span
+                className={`text-sm font-bold leading-none ${
+                  (set.winnerOverrideId &&
+                    set.winnerOverrideId === f.team2_id?.toString()) ||
+                  (!set.winnerOverrideId && set.team2Points > set.team1Points)
+                    ? "text-white"
+                    : "text-zinc-400"
+                }`}
+              >
                 {set.team2Points}
               </span>
             </div>
@@ -272,13 +288,25 @@ export default function TournamentDetailPage() {
                   Set {idx + 1}
                 </span>
                 <span
-                  className={`text-[10px] font-bold ${set.team1Points > set.team2Points ? "text-white" : "text-zinc-400"}`}
+                  className={`text-[10px] font-bold ${
+                    (set.winnerOverrideId &&
+                      set.winnerOverrideId === f.team1_id?.toString()) ||
+                    (!set.winnerOverrideId && set.team1Points > set.team2Points)
+                      ? "text-white"
+                      : "text-zinc-400"
+                  }`}
                 >
                   {set.team1Points}
                 </span>
                 <div className="w-full h-px bg-zinc-800 my-0.5" />
                 <span
-                  className={`text-[10px] font-bold ${set.team2Points > set.team1Points ? "text-white" : "text-zinc-400"}`}
+                  className={`text-[10px] font-bold ${
+                    (set.winnerOverrideId &&
+                      set.winnerOverrideId === f.team2_id?.toString()) ||
+                    (!set.winnerOverrideId && set.team2Points > set.team1Points)
+                      ? "text-white"
+                      : "text-zinc-400"
+                  }`}
                 >
                   {set.team2Points}
                 </span>

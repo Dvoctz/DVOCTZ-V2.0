@@ -20,7 +20,7 @@ type Fixture = {
     resultMessage?: string;
     team1Score?: number;
     team2Score?: number;
-    sets?: { team1Points: number; team2Points: number }[];
+    sets?: { team1Points: number; team2Points: number; winnerOverrideId?: string }[];
   } | null;
 };
 

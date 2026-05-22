@@ -84,7 +84,11 @@ export function FixturesManager({
     man_of_the_match_id: "",
     winner_team_id: "",
     best_of: 3,
-    score_sets: [] as { team1Points: number; team2Points: number }[],
+    score_sets: [] as {
+      team1Points: number;
+      team2Points: number;
+      winnerOverrideId?: string;
+    }[],
   });
 
   // Pre-select tournament based on active tab filtering
@@ -267,10 +271,19 @@ export function FixturesManager({
       // Cast to number just in case inputs send as string
       const t1 = Number(set.team1Points);
       const t2 = Number(set.team2Points);
-      if (t1 > t2) {
-        team1Score++;
-      } else if (t2 > t1) {
-        team2Score++;
+      
+      if (set.winnerOverrideId) {
+        if (set.winnerOverrideId === formData.team1_id?.toString()) {
+          team1Score++;
+        } else if (set.winnerOverrideId === formData.team2_id?.toString()) {
+          team2Score++;
+        }
+      } else {
+        if (t1 > t2) {
+          team1Score++;
+        } else if (t2 > t1) {
+          team2Score++;
+        }
       }
     });
 
@@ -300,6 +313,7 @@ export function FixturesManager({
       sets: formData.score_sets.map((s) => ({
         team1Points: Number(s.team1Points),
         team2Points: Number(s.team2Points),
+        winnerOverrideId: s.winnerOverrideId || undefined,
       })),
       team1Score,
       team2Score,
@@ -912,6 +926,23 @@ export function FixturesManager({
                           setFormData({ ...formData, score_sets: newSets });
                         }}
                       />
+                      <select
+                        className="w-24 bg-zinc-900 border border-zinc-800 p-1.5 text-[10px] uppercase font-bold tracking-widest text-zinc-400 focus:outline-none focus:border-purple-500/50 h-9"
+                        value={set.winnerOverrideId || ""}
+                        onChange={(e) => {
+                          const newSets = [...formData.score_sets];
+                          newSets[idx].winnerOverrideId = e.target.value || undefined;
+                          setFormData({ ...formData, score_sets: newSets });
+                        }}
+                      >
+                        <option value="">Auto Win</option>
+                        {formData.team1_id && (
+                          <option value={formData.team1_id}>T1 Win</option>
+                        )}
+                        {formData.team2_id && (
+                          <option value={formData.team2_id}>T2 Win</option>
+                        )}
+                      </select>
                       <Button
                         type="button"
                         variant="ghost"
