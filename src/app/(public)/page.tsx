@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { LiveTimer } from "@/components/ui/live-timer";
 import {
   Trophy,
   ChevronRight,
@@ -285,14 +286,18 @@ export default function HomePage() {
               </span>
             </div>
           )}
-          <span className="block text-sm font-bold text-white truncate w-full">
-            {f.team1?.name || "TBD"}
+          <span className="flex items-center gap-1.5 text-sm font-bold text-white truncate max-w-full">
+            {(f.status === "live" || (f as any).is_live) && f.score?.servingTeam === "t1" && (
+              <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce shrink-0"></span>
+            )}
+            <span className="truncate">{f.team1?.name || "TBD"}</span>
           </span>
         </div>
         {f.status === "live" || (f as any).is_live ? (
           <div className="flex flex-col items-center justify-center shrink-0">
-             <span className="text-[10px] text-amber-500 font-bold uppercase tracking-widest animate-pulse mb-1">
-               Live
+             <span className="text-[10px] text-amber-500 font-bold uppercase tracking-widest animate-pulse mb-1 flex items-center gap-1.5">
+               {f.score?.activeSet !== undefined ? `Set ${f.score.activeSet + 1}` : 'LIVE'}
+               {f.score?.timer && <LiveTimer timerState={f.score.timer} className="text-white font-mono ml-1" />}
              </span>
              <span className="text-xl font-black text-white tabular-nums tracking-tighter">
                {f.score?.team1Score ?? 0} - {f.score?.team2Score ?? 0}
@@ -319,8 +324,11 @@ export default function HomePage() {
               </span>
             </div>
           )}
-          <span className="block text-sm font-bold text-white truncate w-full">
-            {f.team2?.name || "TBD"}
+          <span className="flex items-center gap-1.5 text-sm font-bold text-white truncate max-w-full">
+            <span className="truncate">{f.team2?.name || "TBD"}</span>
+            {(f.status === "live" || (f as any).is_live) && f.score?.servingTeam === "t2" && (
+              <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce shrink-0"></span>
+            )}
           </span>
         </div>
       </div>

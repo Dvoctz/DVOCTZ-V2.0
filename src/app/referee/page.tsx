@@ -81,12 +81,18 @@ export default function RefereeConsole() {
       t2Pts = sets[actSet].team2Points || 0;
     }
     
+    let timerState = { isRunning: false, startedAt: null as number | null, elapsedBeforeStart: 0 };
+    if (f.live_state?.timer) {
+      timerState = f.live_state.timer;
+    }
+
     const initialLiveState = {
        team1Score: t1Pts,
        team2Score: t2Pts,
        servingTeam: serv,
        activeSet: actSet,
-       sets: sets
+       sets: sets,
+       timer: timerState
     };
 
     setSelectedFixture({
@@ -97,9 +103,21 @@ export default function RefereeConsole() {
     setActiveSetIdx(actSet);
     setServiceSide(serv);
     setHistory([]);
-    setTimerTenths(0);
-    setTimerRunning(false);
+    
     if (timerRef.current) clearInterval(timerRef.current);
+
+    let currentTenths = Math.floor(timerState.elapsedBeforeStart / 100);
+    if (timerState.isRunning && timerState.startedAt) {
+      currentTenths += Math.floor((Date.now() - timerState.startedAt) / 100);
+    }
+    setTimerTenths(currentTenths);
+    setTimerRunning(timerState.isRunning);
+
+    if (timerState.isRunning) {
+      timerRef.current = setInterval(() => {
+        setTimerTenths((prev) => prev + 1);
+      }, 100);
+    }
 
     // mark as live immediately when opened!
     await supabase.from('fixtures').update({ is_live: true, live_state: initialLiveState }).eq('id', f.id);
@@ -112,23 +130,69 @@ export default function RefereeConsole() {
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const toggleTimer = () => {
+  const toggleTimer = async () => {
+    if (!selectedFixture) return;
+
     if (timerRunning) {
       if (timerRef.current) clearInterval(timerRef.current);
       setTimerRunning(false);
+
+      const prevTimer = selectedFixture.live_state?.timer || { isRunning: false, startedAt: null, elapsedBeforeStart: 0 };
+      const now = Date.now();
+      let newElapsed = prevTimer.elapsedBeforeStart;
+      if (prevTimer.startedAt) {
+        newElapsed += now - prevTimer.startedAt;
+      } else {
+        newElapsed = timerTenths * 100;
+      }
+
+      const newTimerState = {
+        isRunning: false,
+        startedAt: null,
+        elapsedBeforeStart: newElapsed
+      };
+
+      const newLiveState = { ...selectedFixture.live_state, timer: newTimerState };
+      setSelectedFixture((prev: any) => ({ ...prev, live_state: newLiveState }));
+      syncLiveState(selectedFixture.id, newLiveState);
+
     } else {
       setTimerRunning(true);
+
+      const prevTimer = selectedFixture.live_state?.timer || { isRunning: false, startedAt: null, elapsedBeforeStart: timerTenths * 100 };
+      const newTimerState = {
+        isRunning: true,
+        startedAt: Date.now(),
+        elapsedBeforeStart: prevTimer.elapsedBeforeStart
+      };
+
+      const newLiveState = { ...selectedFixture.live_state, timer: newTimerState };
+      setSelectedFixture((prev: any) => ({ ...prev, live_state: newLiveState }));
+      syncLiveState(selectedFixture.id, newLiveState);
+
       timerRef.current = setInterval(() => {
         setTimerTenths((prev) => prev + 1);
       }, 100);
     }
   };
 
-  const resetTimer = () => {
+  const resetTimer = async () => {
+    if (!selectedFixture) return;
     if (timerRef.current) clearInterval(timerRef.current);
     setTimerRunning(false);
     setTimerTenths(0);
+
+    const newTimerState = {
+      isRunning: false,
+      startedAt: null,
+      elapsedBeforeStart: 0
+    };
+
+    const newLiveState = { ...selectedFixture.live_state, timer: newTimerState };
+    setSelectedFixture((prev: any) => ({ ...prev, live_state: newLiveState }));
+    syncLiveState(selectedFixture.id, newLiveState);
   };
+
   
   // Cleanup timer on unmount
   useEffect(() => {

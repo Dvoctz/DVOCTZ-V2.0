@@ -2,6 +2,7 @@ import React from "react";
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase/client";
+import { LiveTimer } from "@/components/ui/live-timer";
 import { Trophy, CalendarDays, ChevronLeft, ArrowLeft } from "lucide-react";
 import { TournamentStandings } from "@/components/standings/tournament-standings";
 
@@ -145,8 +146,9 @@ export default function TournamentDetailPage() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
           </span>
-          <span className="text-[10px] uppercase font-black tracking-widest text-amber-500">
-            Live Now
+          <span className="text-[10px] uppercase font-black tracking-widest text-amber-500 flex items-center gap-1.5">
+            <span>LIVE NOW</span>
+            {f.score?.timer && <LiveTimer timerState={f.score.timer} className="text-white font-mono bg-amber-500/10 px-1.5 py-0.5 rounded-sm" />}
           </span>
           <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-sm bg-zinc-900 border border-zinc-800 text-zinc-400 ml-3">
             BO{f.best_of}
@@ -167,7 +169,8 @@ export default function TournamentDetailPage() {
 
       <div className="flex flex-col gap-4 my-2 relative z-10 p-5 bg-zinc-950/80 border border-zinc-900 rounded-sm">
         <div className="flex justify-between items-center w-full gap-4">
-          <span className="text-lg font-bold text-white truncate">
+          <span className="text-lg font-bold text-white truncate flex items-center gap-2">
+            {f.score?.servingTeam === "t1" && <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce"></span>}
             {f.team1?.name || "TBD"}
           </span>
           <span className="text-3xl font-black text-amber-500 shrink-0 tabular-nums leading-none">
@@ -176,7 +179,8 @@ export default function TournamentDetailPage() {
         </div>
         <div className="w-full h-px bg-zinc-900 my-1" />
         <div className="flex justify-between items-center w-full gap-4">
-          <span className="text-lg font-bold text-white truncate">
+          <span className="text-lg font-bold text-white truncate flex items-center gap-2">
+            {f.score?.servingTeam === "t2" && <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce"></span>}
             {f.team2?.name || "TBD"}
           </span>
           <span className="text-3xl font-black text-amber-500 shrink-0 tabular-nums leading-none">
@@ -187,12 +191,12 @@ export default function TournamentDetailPage() {
 
       {f.score?.sets && f.score.sets.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-2 relative z-10">
-          {f.score.sets.map((set, idx) => (
+          {f.score.sets.map((set: any, idx: number) => (
             <div
               key={idx}
-              className="flex flex-col items-center bg-zinc-900/80 px-4 py-2 rounded-sm border border-zinc-800"
+              className={`flex flex-col items-center px-4 py-2 rounded-sm border ${f.score?.activeSet === idx ? 'bg-amber-500/10 border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.2)]' : 'bg-zinc-900/80 border-zinc-800'}`}
             >
-              <span className="text-[9px] text-zinc-500 uppercase font-black tracking-widest mb-1.5">
+              <span className={`text-[9px] uppercase font-black tracking-widest mb-1.5 ${f.score?.activeSet === idx ? 'text-amber-500' : 'text-zinc-500'}`}>
                 Set {idx + 1}
               </span>
               <span
@@ -206,7 +210,7 @@ export default function TournamentDetailPage() {
               >
                 {set.team1Points}
               </span>
-              <div className="w-full h-px bg-zinc-800 my-1.5" />
+              <div className={`w-full h-px my-1.5 ${f.score?.activeSet === idx ? 'bg-amber-500/30' : 'bg-zinc-800'}`} />
               <span
                 className={`text-sm font-bold leading-none ${
                   (set.winnerOverrideId &&
@@ -336,8 +340,8 @@ export default function TournamentDetailPage() {
   const renderBracketCard = (f: Fixture) => {
     const t1Winner = f.winner?.name && f.winner.name === f.team1?.name;
     const t2Winner = f.winner?.name && f.winner.name === f.team2?.name;
-    const isLive = f.status === "live";
-    const isUpcoming = f.status === "upcoming";
+    const isLive = f.status === "live" || f.is_live;
+    const isUpcoming = f.status === "upcoming" && !f.is_live;
 
     return (
       <div
@@ -346,9 +350,14 @@ export default function TournamentDetailPage() {
       >
         <div className="flex justify-between items-center mb-4">
           <span
-            className={`text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm border ${isLive ? "bg-amber-500/20 text-amber-500 border-amber-500/30 animate-pulse" : isUpcoming ? "bg-zinc-900 text-zinc-500 border-zinc-800" : "bg-zinc-800/80 text-zinc-400 border-zinc-700"}`}
+            className={`text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm border flex items-center gap-1 ${isLive ? "bg-amber-500/20 text-amber-500 border-amber-500/30 animate-pulse" : isUpcoming ? "bg-zinc-900 text-zinc-500 border-zinc-800" : "bg-zinc-800/80 text-zinc-400 border-zinc-700"}`}
           >
-            {isLive ? "LIVE" : isUpcoming ? "Upcoming" : "Result"} • BO
+            {isLive ? (
+              <>
+                {f.score?.activeSet !== undefined ? `Set ${f.score.activeSet + 1} LIVE` : "LIVE"}
+                {f.score?.timer && <LiveTimer timerState={f.score.timer} className="ml-1 text-white opacity-90" />}
+              </>
+            ) : isUpcoming ? "Upcoming" : "Result"} • BO
             {f.best_of}
           </span>
           <span className="text-[9px] font-mono text-zinc-500">
@@ -360,7 +369,7 @@ export default function TournamentDetailPage() {
         </div>
         <div className="flex flex-col gap-2">
           <div
-            className={`flex justify-between items-center p-2 rounded-sm border transition-colors ${t1Winner ? "bg-amber-500/10 border-amber-500/20" : "bg-zinc-900/50 border-zinc-800/50 hover:bg-zinc-900"}`}
+            className={`flex justify-between items-center p-2 rounded-sm border transition-colors ${t1Winner || (isLive && f.score?.servingTeam === "t1") ? "bg-amber-500/10 border-amber-500/20" : "bg-zinc-900/50 border-zinc-800/50 hover:bg-zinc-900"}`}
           >
             <div className="flex items-center gap-2 overflow-hidden">
               {f.team1?.logo_url ? (
@@ -373,19 +382,20 @@ export default function TournamentDetailPage() {
                 <div className="w-4 h-4 bg-zinc-800 rounded-full" />
               )}
               <span
-                className={`text-xs font-bold truncate ${t1Winner ? "text-amber-500" : "text-zinc-300"}`}
+                className={`text-xs font-bold truncate flex items-center gap-1.5 ${t1Winner ? "text-amber-500" : "text-zinc-300"}`}
               >
+                {isLive && f.score?.servingTeam === "t1" && <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce shrink-0"></span>}
                 {f.team1?.name || "TBD"}
               </span>
             </div>
             <span
-              className={`text-sm font-black tabular-nums pl-2 ${t1Winner ? "text-amber-500" : "text-zinc-500"}`}
+              className={`text-sm font-black tabular-nums pl-2 ${t1Winner || isLive ? "text-amber-500" : "text-zinc-500"}`}
             >
               {f.score?.team1Score ?? "-"}
             </span>
           </div>
           <div
-            className={`flex justify-between items-center p-2 rounded-sm border transition-colors ${t2Winner ? "bg-amber-500/10 border-amber-500/20" : "bg-zinc-900/50 border-zinc-800/50 hover:bg-zinc-900"}`}
+            className={`flex justify-between items-center p-2 rounded-sm border transition-colors ${t2Winner || (isLive && f.score?.servingTeam === "t2") ? "bg-amber-500/10 border-amber-500/20" : "bg-zinc-900/50 border-zinc-800/50 hover:bg-zinc-900"}`}
           >
             <div className="flex items-center gap-2 overflow-hidden">
               {f.team2?.logo_url ? (
@@ -398,13 +408,14 @@ export default function TournamentDetailPage() {
                 <div className="w-4 h-4 bg-zinc-800 rounded-full" />
               )}
               <span
-                className={`text-xs font-bold truncate ${t2Winner ? "text-amber-500" : "text-zinc-300"}`}
+                className={`text-xs font-bold truncate flex items-center gap-1.5 ${t2Winner ? "text-amber-500" : "text-zinc-300"}`}
               >
                 {f.team2?.name || "TBD"}
+                {isLive && f.score?.servingTeam === "t2" && <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce shrink-0"></span>}
               </span>
             </div>
             <span
-              className={`text-sm font-black tabular-nums pl-2 ${t2Winner ? "text-amber-500" : "text-zinc-500"}`}
+              className={`text-sm font-black tabular-nums pl-2 ${t2Winner || isLive ? "text-amber-500" : "text-zinc-500"}`}
             >
               {f.score?.team2Score ?? "-"}
             </span>
@@ -576,10 +587,10 @@ export default function TournamentDetailPage() {
                   if (stageFixtures.length === 0) return null;
 
                   const liveFixtures = stageFixtures.filter(
-                    (f) => f.status === "live",
+                    (f) => f.status === "live" || f.is_live,
                   );
                   const upcomingFixtures = stageFixtures.filter(
-                    (f) => f.status === "upcoming",
+                    (f) => f.status === "upcoming" && !f.is_live,
                   );
                   const completedFixtures = stageFixtures.filter(
                     (f) => f.status === "completed",
