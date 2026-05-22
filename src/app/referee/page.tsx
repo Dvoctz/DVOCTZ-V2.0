@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase/client";
-import { ShieldAlert, Play, Pause, RotateCcw, Trophy, ChevronLeft, Save } from "lucide-react";
+import { ShieldAlert, Play, Pause, RotateCcw, Trophy, ChevronLeft, Save, CheckCircle } from "lucide-react";
 
 export default function RefereeConsole() {
   const [fixtures, setFixtures] = useState<any[]>([]);
@@ -41,25 +41,68 @@ export default function RefereeConsole() {
     }
   };
 
-  const handleSelectFixture = (f: any) => {
-    setSelectedFixture(f);
-    
-    // Initialize score if it doesn't have structure yet
-    const sets = f.score?.sets?.length > 0 
-      ? f.score.sets 
+  const syncLiveState = async (fixtureId: string, state: any) => {
+    try {
+      await supabase.from('fixtures').update({ live_state: state }).eq('id', fixtureId);
+    } catch(err) {
+      console.error("Failed to sync live state", err);
+    }
+  };
+
+  const handleSelectFixture = async (f: any) => {
+    // Parse sets from score or start fresh
+    let sets = f.score?.sets?.length > 0 
+      ? JSON.parse(JSON.stringify(f.score.sets)) 
       : Array.from({ length: f.best_of || 3 }, () => ({ team1Points: 0, team2Points: 0 }));
-    
-    // Find the first set where a team hasn't won yet, or we'll just take the last active set
-    let currentSetIdx = 0;
-    while(currentSetIdx < sets.length - 1 && (sets[currentSetIdx].team1Points >= 25 || sets[currentSetIdx].team2Points >= 25)) {
-      currentSetIdx++;
+      
+    let actSet = 0;
+    let t1Pts = 0;
+    let t2Pts = 0;
+    let serv: "t1" | "t2" = "t1";
+
+    if (f.live_state) {
+      if (f.live_state.sets) sets = f.live_state.sets;
+      if (f.live_state.activeSet !== undefined) actSet = f.live_state.activeSet;
+      if (f.live_state.servingTeam) serv = f.live_state.servingTeam;
+      
+      t1Pts = f.live_state.team1Score ?? sets[actSet]?.team1Points ?? 0;
+      t2Pts = f.live_state.team2Score ?? sets[actSet]?.team2Points ?? 0;
+      
+      if (sets[actSet]) {
+         sets[actSet].team1Points = t1Pts;
+         sets[actSet].team2Points = t2Pts;
+      }
+    } else {
+      // Find first unfinished set
+      while(actSet < sets.length - 1 && (sets[actSet].team1Points >= 25 || sets[actSet].team2Points >= 25)) {
+        actSet++;
+      }
+      t1Pts = sets[actSet].team1Points || 0;
+      t2Pts = sets[actSet].team2Points || 0;
     }
     
-    setActiveSetIdx(currentSetIdx);
+    const initialLiveState = {
+       team1Score: t1Pts,
+       team2Score: t2Pts,
+       servingTeam: serv,
+       activeSet: actSet,
+       sets: sets
+    };
+
+    setSelectedFixture({
+      ...f,
+      live_state: initialLiveState
+    });
+    
+    setActiveSetIdx(actSet);
+    setServiceSide(serv);
     setHistory([]);
     setTimerTenths(0);
     setTimerRunning(false);
     if (timerRef.current) clearInterval(timerRef.current);
+
+    // mark as live immediately when opened!
+    await supabase.from('fixtures').update({ is_live: true, live_state: initialLiveState }).eq('id', f.id);
   };
 
   const formatTimer = (totalTenths: number) => {
@@ -97,8 +140,8 @@ export default function RefereeConsole() {
   const changeScore = async (team: "t1" | "t2") => {
     if (!selectedFixture) return;
 
-    let currentSets = selectedFixture.score?.sets?.length > 0 
-      ? JSON.parse(JSON.stringify(selectedFixture.score.sets))
+    let currentSets = selectedFixture.live_state?.sets?.length > 0 
+      ? JSON.parse(JSON.stringify(selectedFixture.live_state.sets))
       : Array.from({ length: selectedFixture.best_of || 3 }, () => ({ team1Points: 0, team2Points: 0 }));
     
     // Ensure activeSetIdx exists
@@ -109,8 +152,9 @@ export default function RefereeConsole() {
     const activeSet = currentSets[activeSetIdx];
     
     // Push to history for undo
-    setHistory((prev) => [...prev, { sets: JSON.parse(JSON.stringify(currentSets)), serviceSide }]);
+    setHistory((prev) => [...prev, { sets: JSON.parse(JSON.stringify(currentSets)),  serviceSide }]);
       
+    let nextServiceSide = serviceSide;
     if (serviceSide === team) {
       // Serving team won rally: add point, keep service
       if (team === "t1") {
@@ -120,89 +164,105 @@ export default function RefereeConsole() {
       }
     } else {
       // Receiving team won rally: NO point added, change service
+      nextServiceSide = team;
       setServiceSide(team);
     }
 
-    // Determine total scores
-    let team1Score = 0;
-    let team2Score = 0;
-    currentSets.forEach(set => {
-      // Simplified winner logic for live preview, accurate determination in admin
-      if (set.winnerOverrideId) {
-         if (set.winnerOverrideId === selectedFixture.team1_id?.toString()) team1Score++;
-         else if (set.winnerOverrideId === selectedFixture.team2_id?.toString()) team2Score++;
-      } else {
-         if (set.team1Points > set.team2Points && set.team1Points >= 25 && set.team1Points - set.team2Points >= 2) team1Score++;
-         else if (set.team2Points > set.team1Points && set.team2Points >= 25 && set.team2Points - set.team1Points >= 2) team2Score++;
-      }
-    });
-
-    const newScore = {
-      ...selectedFixture.score,
-      sets: currentSets,
-      team1Score,
-      team2Score
+    const newLiveState = {
+      team1Score: activeSet.team1Points,
+      team2Score: activeSet.team2Points,
+      servingTeam: nextServiceSide,
+      activeSet: activeSetIdx,
+      sets: currentSets
     };
 
     const updatedFixture = {
       ...selectedFixture,
-      score: newScore,
-      status: "live"
+      live_state: newLiveState
     };
 
     setSelectedFixture(updatedFixture);
+    syncLiveState(selectedFixture.id, newLiveState);
   };
   
   const handleUndo = () => {
     if (history.length === 0 || !selectedFixture) return;
     const previousState = history[history.length - 1];
     
-    let team1Score = 0;
-    let team2Score = 0;
-    previousState.sets.forEach((set: any) => {
-      if (set.winnerOverrideId) {
-         if (set.winnerOverrideId === selectedFixture.team1_id?.toString()) team1Score++;
-         else if (set.winnerOverrideId === selectedFixture.team2_id?.toString()) team2Score++;
-      } else {
-         if (set.team1Points > set.team2Points && set.team1Points >= 25 && set.team1Points - set.team2Points >= 2) team1Score++;
-         else if (set.team2Points > set.team1Points && set.team2Points >= 25 && set.team2Points - set.team1Points >= 2) team2Score++;
-      }
-    });
-
-    const updatedFixture = {
-      ...selectedFixture,
-      score: {
-        ...selectedFixture.score,
-        sets: previousState.sets,
-        team1Score,
-        team2Score
-      }
-    };
-    
+    let nextServiceSide = previousState.serviceSide || serviceSide;
     if (previousState.serviceSide) {
       setServiceSide(previousState.serviceSide);
     }
     
+    const restoredSets = previousState.sets;
+    const actSet = restoredSets[activeSetIdx] || { team1Points: 0, team2Points: 0 };
+
+    const newLiveState = {
+      team1Score: actSet.team1Points,
+      team2Score: actSet.team2Points,
+      servingTeam: nextServiceSide,
+      activeSet: activeSetIdx,
+      sets: restoredSets
+    };
+
+    const updatedFixture = {
+      ...selectedFixture,
+      live_state: newLiveState
+    };
+    
     setSelectedFixture(updatedFixture);
     setHistory((prev) => prev.slice(0, -1));
+    syncLiveState(selectedFixture.id, newLiveState);
   };
   
-  const handleSaveToDb = async () => {
+  const handleFinalize = async () => {
     if (!selectedFixture) return;
+    if (!confirm("Are you sure you want to finalize this match? The official score will be recorded and live tracking will end.")) return;
+    
+    const sets = selectedFixture.live_state?.sets || [];
+    let team1MatchScore = 0;
+    let team2MatchScore = 0;
+    
+    sets.forEach((set: any) => {
+       if (set.winnerOverrideId) {
+          if (set.winnerOverrideId === selectedFixture.team1_id?.toString()) team1MatchScore++;
+          else if (set.winnerOverrideId === selectedFixture.team2_id?.toString()) team2MatchScore++;
+       } else {
+          if (set.team1Points > set.team2Points && set.team1Points >= 25 && set.team1Points - set.team2Points >= 2) team1MatchScore++;
+          else if (set.team2Points > set.team1Points && set.team2Points >= 25 && set.team2Points - set.team1Points >= 2) team2MatchScore++;
+       }
+    });
+
+    const officialScore = {
+       sets: sets,
+       team1Score: team1MatchScore,
+       team2Score: team2MatchScore
+    };
+
     try {
       const { error } = await supabase
         .from('fixtures')
         .update({ 
-          score: selectedFixture.score,
-          status: 'live' 
+          score: officialScore,
+          is_live: false,
+          status: 'completed' 
         })
         .eq('id', selectedFixture.id);
         
       if (error) throw error;
-      alert("Match data synced successfully.");
+      alert("Match finalized successfully.");
+      setSelectedFixture(null);
+      fetchFixtures();
     } catch (err: any) {
-      alert("Failed to sync: " + err.message);
+      alert("Failed to finalize: " + err.message);
     }
+  };
+
+  const handleCloseMatch = async () => {
+    if (!selectedFixture) return;
+    // We do not finalize, but we mark it as no longer active on the screen.
+    // Let's actually keep is_live = true if they just go back, so it stays live in the DB.
+    setSelectedFixture(null);
   };
 
   if (loading) {
@@ -233,10 +293,14 @@ export default function RefereeConsole() {
                  <button 
                    key={f.id} 
                    onClick={() => handleSelectFixture(f)}
-                   className="w-full bg-zinc-950 border border-zinc-800 p-4 hover:border-amber-500/50 hover:bg-zinc-900 transition-all flex flex-col items-start gap-4"
+                   className="w-full bg-zinc-950 border border-zinc-800 p-4 hover:border-amber-500/50 hover:bg-zinc-900 transition-all flex flex-col items-start gap-4 relative overflow-hidden"
                  >
+                    {f.is_live && <div className="absolute right-0 top-0 bottom-0 w-1 bg-amber-500"></div>}
                     <div className="w-full flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest bg-amber-500/10 px-2 py-0.5">{f.tournaments?.division || 'Court 1'}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest bg-amber-500/10 px-2 py-0.5">{f.tournaments?.division || 'Court 1'}</span>
+                        {f.is_live && <span className="text-[8px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-1"><span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span> Live</span>}
+                      </div>
                       <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{f.tournaments?.name}</span>
                     </div>
                     <div className="w-full flex items-center justify-between text-lg md:text-xl font-bold italic tracking-tight text-white gap-4">
@@ -253,7 +317,7 @@ export default function RefereeConsole() {
     );
   }
 
-  const currentSets = selectedFixture.score?.sets || [];
+  const currentSets = selectedFixture.live_state?.sets || [];
   const t1Pts = currentSets[activeSetIdx]?.team1Points || 0;
   const t2Pts = currentSets[activeSetIdx]?.team2Points || 0;
   const t1Name = selectedFixture.team1?.name || "T1";
@@ -264,21 +328,21 @@ export default function RefereeConsole() {
       {/* Header */}
       <header className="h-16 shrink-0 border-b border-zinc-900 flex items-center justify-between px-4 sticky top-0 bg-zinc-950/90 backdrop-blur-md z-20">
         <button 
-          onClick={() => setSelectedFixture(null)}
+          onClick={handleCloseMatch}
           className="h-10 px-3 flex items-center justify-center text-zinc-400 hover:text-white transition-colors"
         >
            <ChevronLeft className="h-6 w-6" />
         </button>
         <div className="flex flex-col items-center">
-          <span className="text-[10px] uppercase tracking-widest font-bold text-amber-500">Match Official</span>
+          <span className="text-[10px] uppercase tracking-widest font-bold text-amber-500 flex items-center gap-1"><span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span> Live Syncing</span>
           <span className="text-xs font-bold text-white tracking-widest uppercase">Court Control</span>
         </div>
         <button 
-          onClick={handleSaveToDb}
-          className="h-10 px-3 flex items-center justify-center text-amber-500 hover:bg-amber-500/10 transition-colors border border-amber-500/30 rounded-sm"
+          onClick={handleFinalize}
+          className="h-10 px-3 flex items-center justify-center text-black bg-amber-500 hover:bg-amber-400 transition-colors rounded-sm"
         >
-           <Save className="h-4 w-4 mr-2" />
-           <span className="text-[10px] font-bold uppercase tracking-widest">Sync</span>
+           <CheckCircle className="h-4 w-4 mr-2" />
+           <span className="text-[10px] font-bold uppercase tracking-widest">Finalize</span>
         </button>
       </header>
 
@@ -314,7 +378,20 @@ export default function RefereeConsole() {
             {Array.from({length: selectedFixture.best_of || 3}).map((_, i) => (
               <button 
                 key={i}
-                onClick={() => setActiveSetIdx(i)}
+                onClick={() => {
+                   setActiveSetIdx(i);
+                   if (selectedFixture?.live_state) {
+                     const actSet = selectedFixture.live_state.sets?.[i] || { team1Points: 0, team2Points: 0 };
+                     const newLiveState = { 
+                       ...selectedFixture.live_state, 
+                       activeSet: i,
+                       team1Score: actSet.team1Points,
+                       team2Score: actSet.team2Points
+                     };
+                     setSelectedFixture({ ...selectedFixture, live_state: newLiveState });
+                     syncLiveState(selectedFixture.id, newLiveState);
+                   }
+                }}
                 className={`flex flex-col items-center px-4 py-2 border rounded-sm transition-all ${activeSetIdx === i ? 'bg-amber-500/10 border-amber-500 text-amber-500 scale-105' : 'bg-zinc-900 border-zinc-800 text-zinc-500'}`}
               >
                 <span className="text-[8px] uppercase font-bold tracking-widest mb-1">Set {i + 1}</span>
@@ -333,7 +410,14 @@ export default function RefereeConsole() {
               
               <div 
                 className="p-4 border-b border-zinc-900 flex justify-center cursor-pointer hover:bg-zinc-900/50 transition-colors"
-                onClick={() => setServiceSide("t1")}
+                onClick={() => {
+                   setServiceSide("t1");
+                   if (selectedFixture?.live_state) {
+                     const newLiveState = { ...selectedFixture.live_state, servingTeam: "t1" };
+                     setSelectedFixture({ ...selectedFixture, live_state: newLiveState });
+                     syncLiveState(selectedFixture.id, newLiveState);
+                   }
+                }}
               >
                 <div className="flex flex-col items-center text-center">
                   <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 max-w-full truncate px-2">{t1Name}</span>
@@ -359,7 +443,14 @@ export default function RefereeConsole() {
               
               <div 
                 className="p-4 border-b border-zinc-900 flex justify-center cursor-pointer hover:bg-zinc-900/50 transition-colors"
-                onClick={() => setServiceSide("t2")}
+                onClick={() => {
+                   setServiceSide("t2");
+                   if (selectedFixture?.live_state) {
+                     const newLiveState = { ...selectedFixture.live_state, servingTeam: "t2" };
+                     setSelectedFixture({ ...selectedFixture, live_state: newLiveState });
+                     syncLiveState(selectedFixture.id, newLiveState);
+                   }
+                }}
               >
                 <div className="flex flex-col items-center text-center">
                   <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 max-w-full truncate px-2">{t2Name}</span>
@@ -394,3 +485,4 @@ export default function RefereeConsole() {
     </div>
   );
 }
+
