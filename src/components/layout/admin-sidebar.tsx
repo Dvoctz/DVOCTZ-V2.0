@@ -23,7 +23,7 @@ const navItems = [
   { icon: Briefcase, label: "Sponsors", href: "/admin/sponsors" },
 ];
 
-export function AdminSidebar() {
+export function AdminSidebar({ onClose }: { onClose?: () => void }) {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -33,7 +33,7 @@ export function AdminSidebar() {
   };
 
   return (
-    <aside className="w-64 border-r border-zinc-900 bg-zinc-950 p-6 flex flex-col gap-8 h-full shrink-0">
+    <aside className="w-64 border-r border-zinc-900 bg-zinc-950 p-6 flex flex-col gap-8 h-full shrink-0 overflow-y-auto">
       <div>
         <Link
           to="/"
@@ -55,6 +55,7 @@ export function AdminSidebar() {
               <li key={i}>
                 <Link
                   to={item.href}
+                  onClick={onClose}
                   className={cn(
                     "flex items-center gap-3 text-sm group cursor-pointer transition-colors",
                     isActive

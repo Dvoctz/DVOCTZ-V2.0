@@ -131,13 +131,13 @@ export function SponsorsManager() {
   })
 
   return (
-    <section className="border border-zinc-800 bg-zinc-950 p-8 flex flex-col relative mt-10">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8">
+    <section className="border border-zinc-800 bg-zinc-950 p-4 md:p-8 flex flex-col relative w-full overflow-hidden mt-6 md:mt-10">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-6 md:mb-8">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight italic text-white flex items-center gap-3">
-             <Briefcase className="h-6 w-6 text-amber-500" /> Sponsor Manager
+          <h2 className="text-xl md:text-2xl font-bold tracking-tight italic text-white flex items-center gap-3">
+             <Briefcase className="h-5 w-5 md:h-6 md:w-6 text-amber-500" /> Sponsor Manager
           </h2>
-          <p className="text-xs text-zinc-500 font-semibold uppercase tracking-widest mt-1">Configured Sponsors</p>
+          <p className="text-[10px] md:text-xs text-zinc-500 font-semibold uppercase tracking-widest mt-1">Configured Sponsors</p>
         </div>
         
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
@@ -148,7 +148,7 @@ export function SponsorsManager() {
             onChange={e => setSearchQuery(e.target.value)}
             className="w-full md:w-64 bg-zinc-900 border-zinc-800 focus:border-amber-500/50"
           />
-          <Button onClick={() => handleOpenModal()} className="w-full md:w-auto text-xs border-amber-500/20 bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-black">
+          <Button onClick={() => handleOpenModal()} className="w-full md:w-auto text-[10px] md:text-xs border-amber-500/20 bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-black">
             <Plus className="h-4 w-4 mr-2" /> Add Sponsor
           </Button>
         </div>
@@ -180,8 +180,8 @@ export function SponsorsManager() {
       ) : (
         <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
           {displayedSponsors.map((s) => (
-            <div key={s.id} className="flex items-center justify-between py-4 border border-zinc-900 bg-zinc-950 hover:bg-zinc-900/40 px-4 transition-colors group cursor-default">
-              <div className="flex items-center gap-4">
+            <div key={s.id} className="flex flex-col sm:flex-row sm:items-center justify-between py-4 border border-zinc-900 bg-zinc-950 hover:bg-zinc-900/40 px-4 transition-colors group cursor-default gap-3 md:gap-4">
+              <div className="flex items-start sm:items-center gap-4">
                 <div className="w-16 h-16 rounded-sm bg-zinc-900 border border-zinc-800 flex items-center justify-center overflow-hidden shrink-0 p-1">
                    {s.logo_url ? (
                      <img src={s.logo_url} alt={s.name} className="w-full h-full object-contain mix-blend-screen" />
@@ -190,11 +190,11 @@ export function SponsorsManager() {
                    )}
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-white">{s.name}</h3>
+                  <h3 className="text-base sm:text-lg font-medium text-white max-w-[200px] sm:max-w-none truncate">{s.name}</h3>
                   <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">Partner</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity justify-end">
                 <Button variant="ghost" size="sm" onClick={() => handleOpenModal(s)} className="h-8 px-2 text-zinc-400 hover:text-amber-500">
                   <Edit2 className="h-4 w-4" />
                 </Button>

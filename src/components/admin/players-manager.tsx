@@ -337,13 +337,13 @@ export function PlayersManager() {
   });
 
   return (
-    <section className="border border-zinc-800 bg-zinc-950 p-8 flex flex-col relative mt-10">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8">
+    <section className="border border-zinc-800 bg-zinc-950 p-4 md:p-8 flex flex-col relative w-full overflow-hidden mt-6 md:mt-10">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-6 md:mb-8">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight italic text-white flex items-center gap-3">
-            <UserSquare2 className="h-6 w-6 text-blue-500" /> Player Directory
+          <h2 className="text-xl md:text-2xl font-bold tracking-tight italic text-white flex items-center gap-3">
+            <UserSquare2 className="h-5 w-5 md:h-6 md:w-6 text-blue-500" /> Player Directory
           </h2>
-          <p className="text-xs text-zinc-500 font-semibold uppercase tracking-widest mt-1">
+          <p className="text-[10px] md:text-xs text-zinc-500 font-semibold uppercase tracking-widest mt-1">
             Registered Athletes
           </p>
         </div>
@@ -433,10 +433,10 @@ export function PlayersManager() {
           {filteredPlayers.map((p) => (
             <div
               key={p.id}
-              className="flex items-center justify-between py-4 border-b border-zinc-900 hover:bg-zinc-900/40 px-3 transition-colors group cursor-default"
+              className="flex flex-col md:flex-row md:items-center justify-between py-4 border-b border-zinc-900 hover:bg-zinc-900/40 px-3 transition-colors group cursor-default gap-4 md:gap-3"
             >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-sm bg-zinc-900 border border-zinc-800 flex items-center justify-center overflow-hidden shrink-0">
+              <div className="flex items-start md:items-center gap-4 w-full md:w-auto overflow-hidden">
+                <div className="w-12 h-12 rounded-sm bg-zinc-900 border border-zinc-800 flex items-center justify-center overflow-hidden shrink-0 mt-1 md:mt-0">
                   {p.photo_url ? (
                     <img
                       src={p.photo_url}
@@ -567,7 +567,7 @@ export function PlayersManager() {
                   })()}
                 </div>
               </div>
-              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                 <Button
                   variant="ghost"
                   size="sm"

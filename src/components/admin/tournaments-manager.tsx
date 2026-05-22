@@ -202,17 +202,17 @@ export function TournamentsManager({
     : tournaments;
 
   return (
-    <section className="border border-zinc-800 bg-zinc-950 p-8 flex flex-col relative">
-      <div className="flex justify-between items-end mb-8">
+    <section className="border border-zinc-800 bg-zinc-950 p-4 md:p-8 flex flex-col relative w-full overflow-hidden">
+      <div className="flex flex-col md:flex-row md:justify-between items-start md:items-end mb-6 md:mb-8 gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight italic text-white flex items-center gap-3">
-            <Trophy className="h-6 w-6 text-amber-500" /> Event Manager
+          <h2 className="text-xl md:text-2xl font-bold tracking-tight italic text-white flex items-center gap-3">
+            <Trophy className="h-5 w-5 md:h-6 md:w-6 text-amber-500" /> Event Manager
           </h2>
-          <p className="text-xs text-zinc-500 font-semibold uppercase tracking-widest mt-1">
+          <p className="text-[10px] md:text-xs text-zinc-500 font-semibold uppercase tracking-widest mt-1">
             Configured Tournaments
           </p>
         </div>
-        <Button onClick={() => handleOpenModal()} className="text-xs">
+        <Button onClick={() => handleOpenModal()} className="text-xs w-full md:w-auto">
           <Plus className="h-4 w-4 mr-2" /> New Setup
         </Button>
       </div>
@@ -229,7 +229,7 @@ export function TournamentsManager({
         </div>
       ) : displayedTournaments.length === 0 ? (
         <div className="text-center py-12 border border-dashed border-zinc-800">
-          <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">
+          <p className="text-[10px] md:text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">
             No events discovered in network
           </p>
           <Button onClick={() => handleOpenModal()} variant="outline" size="sm">
@@ -243,28 +243,28 @@ export function TournamentsManager({
               key={t.id}
               className="flex flex-col border border-zinc-900 transition-colors group"
             >
-              <div className="flex items-center justify-between py-4 px-4 hover:bg-zinc-900/40 cursor-default">
-                <div>
+              <div className="flex flex-col md:flex-row md:items-center justify-between py-4 px-4 hover:bg-zinc-900/40 cursor-default gap-4 md:gap-3">
+                <div className="w-full md:w-auto overflow-hidden">
                   <p className="text-[10px] text-amber-500 font-bold tracking-widest uppercase mb-1">
                     [{t.phase}] {t.division && `- ${t.division}`}
                   </p>
-                  <h3 className="text-lg font-medium text-white flex items-center gap-3">
-                    {t.name}
+                  <h3 className="text-base md:text-lg font-medium text-white flex flex-wrap items-center gap-2 md:gap-3">
+                    <span className="truncate">{t.name}</span>
                     {t.show_champion_banner && (
-                      <span className="text-[8px] bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded-sm uppercase tracking-widest border border-zinc-700">
-                        Banner Active
+                      <span className="text-[8px] bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded-sm uppercase tracking-widest border border-zinc-700 shrink-0">
+                        Banner
                       </span>
                     )}
                     {t.is_current_champion && (
-                      <span className="text-[8px] bg-amber-500/10 text-amber-500 px-1.5 py-0.5 rounded-sm uppercase tracking-widest border border-amber-500/30">
-                        Current Champion
+                      <span className="text-[8px] bg-amber-500/10 text-amber-500 px-1.5 py-0.5 rounded-sm uppercase tracking-widest border border-amber-500/30 shrink-0">
+                        Current
                       </span>
                     )}
                   </h3>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2 md:gap-3">
                   {t.phase === "completed" ? (
-                    <div className="flex items-center gap-2 group">
+                    <div className="flex items-center gap-2 group w-full md:w-auto">
                       <Button
                         variant={
                           expandedStandingsId === t.id ? "default" : "outline"
@@ -275,29 +275,27 @@ export function TournamentsManager({
                             expandedStandingsId === t.id ? null : t.id,
                           )
                         }
-                        className={`h-8 px-3 text-xs uppercase tracking-widest font-bold ${expandedStandingsId === t.id ? "bg-amber-500 text-black hover:bg-amber-600" : "border-amber-500/20 text-amber-500 hover:bg-amber-500/10 hover:border-amber-500/50"}`}
+                        className={`flex-1 md:flex-none h-8 px-2 md:px-3 text-[10px] md:text-xs uppercase tracking-widest font-bold ${expandedStandingsId === t.id ? "bg-amber-500 text-black hover:bg-amber-600" : "border-amber-500/20 text-amber-500 hover:bg-amber-500/10 hover:border-amber-500/50"}`}
                       >
-                        <AlignEndHorizontal className="h-4 w-4 mr-2" />
-                        {expandedStandingsId === t.id
-                          ? "Close Standings"
-                          : "View Standings"}
+                        <AlignEndHorizontal className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+                        {expandedStandingsId === t.id ? "Close" : "Standings"}
                       </Button>
-                      <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest px-3 py-1.5 border border-zinc-800 bg-zinc-900 ml-1">
-                        Completed
+                      <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest px-2 md:px-3 py-1.5 border border-zinc-800 bg-zinc-900 ml-1">
+                        Done
                       </span>
 
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setPasswordOverrideTarget(t)}
-                        className="h-8 px-2 ml-1 text-zinc-600 hover:text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="h-8 w-8 p-0 text-zinc-600 hover:text-amber-500 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                         title="Unlock completed tournament"
                       >
                         <Lock className="h-4 w-4" />
                       </Button>
                     </div>
                   ) : (
-                    <>
+                    <div className="flex items-center gap-2 w-full md:w-auto">
                       <Button
                         variant={
                           expandedStandingsId === t.id ? "default" : "outline"
@@ -308,19 +306,17 @@ export function TournamentsManager({
                             expandedStandingsId === t.id ? null : t.id,
                           )
                         }
-                        className={`h-8 px-3 text-xs uppercase tracking-widest font-bold ${expandedStandingsId === t.id ? "bg-amber-500 text-black hover:bg-amber-600" : "border-amber-500/20 text-amber-500 hover:bg-amber-500/10 hover:border-amber-500/50"}`}
+                        className={`flex-1 md:flex-none h-8 px-2 md:px-3 text-[10px] md:text-xs uppercase tracking-widest font-bold ${expandedStandingsId === t.id ? "bg-amber-500 text-black hover:bg-amber-600" : "border-amber-500/20 text-amber-500 hover:bg-amber-500/10 hover:border-amber-500/50"}`}
                       >
-                        <AlignEndHorizontal className="h-4 w-4 mr-2" />
-                        {expandedStandingsId === t.id
-                          ? "Close Standings"
-                          : "View Standings"}
+                        <AlignEndHorizontal className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+                        {expandedStandingsId === t.id ? "Close" : "Standings"}
                       </Button>
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-1 md:gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleOpenModal(t)}
-                          className="h-8 px-2 text-zinc-400 hover:text-amber-500"
+                          className="h-8 w-8 p-0 text-zinc-400 hover:text-amber-500"
                         >
                           <Edit2 className="h-4 w-4" />
                         </Button>
@@ -329,42 +325,44 @@ export function TournamentsManager({
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDelete(t.id)}
-                            className="h-8 px-2 text-white bg-red-500 hover:bg-red-600"
+                            className="h-8 px-2 text-[10px] text-white bg-red-500 hover:bg-red-600 font-bold"
                           >
-                            Confirm
+                            Yes
                           </Button>
                         ) : (
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => setConfirmDeleteId(t.id)}
-                            className="h-8 px-2 text-zinc-400 hover:text-red-500"
+                            className="h-8 w-8 p-0 text-zinc-400 hover:text-red-500"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         )}
                       </div>
-                    </>
+                    </div>
                   )}
                 </div>
               </div>
 
               {expandedStandingsId === t.id && (
-                <div className="border-t border-zinc-900 bg-black/40 p-6 shadow-inner">
+                <div className="border-t border-zinc-900 bg-black/40 p-4 md:p-6 shadow-inner overflow-x-auto">
                   <div className="flex justify-between items-center mb-4">
-                    <h4 className="text-sm font-bold text-white uppercase tracking-widest">
-                      Admin Standings Preview
+                    <h4 className="text-[10px] md:text-sm font-bold text-white uppercase tracking-widest">
+                      Admin Standings
                     </h4>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 text-zinc-500 hover:text-white"
+                      className="h-6 text-[10px] text-zinc-500 hover:text-white"
                       onClick={() => setExpandedStandingsId(null)}
                     >
                       Close
                     </Button>
                   </div>
-                  <TournamentStandings tournamentId={t.id} />
+                  <div className="min-w-[600px]">
+                    <TournamentStandings tournamentId={t.id} />
+                  </div>
                 </div>
               )}
             </div>

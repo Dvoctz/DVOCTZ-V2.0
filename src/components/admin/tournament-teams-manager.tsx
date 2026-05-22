@@ -174,13 +174,13 @@ export function TournamentTeamsManager({
   );
 
   return (
-    <section className="border border-zinc-800 bg-zinc-950 p-8 flex flex-col relative mt-10">
-      <div className="flex justify-between items-end mb-8">
+    <section className="border border-zinc-800 bg-zinc-950 p-4 md:p-8 flex flex-col relative w-full overflow-hidden mt-6 md:mt-10">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 md:mb-8 gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight italic text-white flex items-center gap-3">
-            <Trophy className="h-6 w-6 text-amber-500" /> Tournament Enrollments
+          <h2 className="text-xl md:text-2xl font-bold tracking-tight italic text-white flex items-center gap-3">
+            <Trophy className="h-5 w-5 md:h-6 md:w-6 text-amber-500" /> Tournament Enrollments
           </h2>
-          <p className="text-xs text-zinc-500 font-semibold uppercase tracking-widest mt-1">
+          <p className="text-[10px] md:text-xs text-zinc-500 font-semibold uppercase tracking-widest mt-1">
             Manage Participating Teams
           </p>
         </div>
@@ -222,7 +222,7 @@ export function TournamentTeamsManager({
             <>
               <form
                 onSubmit={handleAssign}
-                className="flex gap-4 items-end bg-zinc-900/30 p-4 border border-zinc-900"
+                className="flex flex-col sm:flex-row gap-4 sm:items-end bg-zinc-900/30 p-4 border border-zinc-900"
               >
                 <div className="flex-1 space-y-2">
                   <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold block">
@@ -287,7 +287,7 @@ export function TournamentTeamsManager({
                           variant="ghost"
                           size="sm"
                           onClick={() => handleRemove(selectedTournament, t.id)}
-                          className="h-8 px-2 text-zinc-500 hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
+                          className="h-8 px-2 text-zinc-500 hover:text-red-500 hover:bg-red-500/10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all shrink-0"
                           title="Remove from tournament"
                         >
                           <Trash2 className="h-4 w-4" />

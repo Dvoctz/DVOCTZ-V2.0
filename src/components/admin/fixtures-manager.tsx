@@ -382,13 +382,13 @@ export function FixturesManager({
   );
 
   return (
-    <section className="border border-zinc-800 bg-zinc-950 p-8 flex flex-col relative mt-10">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8">
+    <section className="border border-zinc-800 bg-zinc-950 p-4 md:p-8 flex flex-col relative w-full overflow-hidden mt-6 md:mt-10">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-6 md:mb-8">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight italic text-white flex items-center gap-3">
-            <CalendarDays className="h-6 w-6 text-purple-500" /> Match Fixtures
+          <h2 className="text-xl md:text-2xl font-bold tracking-tight italic text-white flex items-center gap-3">
+            <CalendarDays className="h-5 w-5 md:h-6 md:w-6 text-purple-500" /> Match Fixtures
           </h2>
-          <p className="text-xs text-zinc-500 font-semibold uppercase tracking-widest mt-1">
+          <p className="text-[10px] md:text-xs text-zinc-500 font-semibold uppercase tracking-widest mt-1">
             Schedule & Results Manager
           </p>
         </div>
@@ -505,11 +505,11 @@ export function FixturesManager({
                   {stageFixtures.map((f) => (
                     <div
                       key={f.id}
-                      className={`flex items-center justify-between py-4 border-b hover:bg-zinc-900/40 px-3 transition-colors group cursor-default ${f.status === "live" ? "border-amber-500/30 bg-amber-500/5" : "border-zinc-900"}`}
+                      className={`flex flex-col md:flex-row md:items-center justify-between py-4 border-b hover:bg-zinc-900/40 px-3 transition-colors group cursor-default gap-4 md:gap-3 ${f.status === "live" ? "border-amber-500/30 bg-amber-500/5" : "border-zinc-900"}`}
                     >
-                      <div className="flex items-center gap-4 flex-1">
+                      <div className="flex items-start md:items-center gap-4 flex-1">
                         <div
-                          className={`w-12 h-12 rounded-sm border flex items-center justify-center shrink-0 ${f.status === "live" ? "bg-amber-500/10 border-amber-500/20 text-amber-500" : "bg-zinc-900 border-zinc-800 text-zinc-500"}`}
+                          className={`w-12 h-12 rounded-sm border flex items-center justify-center shrink-0 mt-1 md:mt-0 ${f.status === "live" ? "bg-amber-500/10 border-amber-500/20 text-amber-500" : "bg-zinc-900 border-zinc-800 text-zinc-500"}`}
                         >
                           <CalendarDays className="w-5 h-5" />
                         </div>
@@ -579,7 +579,7 @@ export function FixturesManager({
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity ml-4">
+                      <div className="flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity w-full md:w-auto md:ml-4 justify-end">
                         {f.tournaments?.phase === "completed" ? (
                           <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest px-2 py-1 bg-zinc-900 border border-zinc-800 rounded-sm">
                             Locked

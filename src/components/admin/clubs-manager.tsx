@@ -123,15 +123,15 @@ export function ClubsManager() {
   }
 
   return (
-    <section className="border border-zinc-800 bg-zinc-950 p-8 flex flex-col relative mt-10">
-      <div className="flex justify-between items-end mb-8">
+    <section className="border border-zinc-800 bg-zinc-950 p-4 md:p-8 flex flex-col relative w-full overflow-hidden mt-6 md:mt-10">
+      <div className="flex flex-col md:flex-row md:justify-between items-start md:items-end mb-6 md:mb-8 gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight italic text-white flex items-center gap-3">
-            <Shield className="h-6 w-6 text-red-500" /> Club Directory
+          <h2 className="text-xl md:text-2xl font-bold tracking-tight italic text-white flex items-center gap-3">
+            <Shield className="h-5 w-5 md:h-6 md:w-6 text-red-500" /> Club Directory
           </h2>
-          <p className="text-xs text-zinc-500 font-semibold uppercase tracking-widest mt-1">Founding Organizations</p>
+          <p className="text-[10px] md:text-xs text-zinc-500 font-semibold uppercase tracking-widest mt-1">Founding Organizations</p>
         </div>
-        <Button onClick={() => handleOpenModal()} className="text-xs border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-black">
+        <Button onClick={() => handleOpenModal()} className="text-[10px] md:text-xs border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-black w-full md:w-auto">
           <Plus className="h-4 w-4 mr-2" /> Register Club
         </Button>
       </div>
@@ -166,7 +166,7 @@ export function ClubsManager() {
                       <Shield className="w-6 h-6 text-zinc-700" />
                     )}
                   </div>
-                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                     <Button variant="ghost" size="sm" onClick={() => handleOpenModal(c)} className="h-8 px-2 text-zinc-400 hover:text-red-500">
                       <Edit2 className="h-4 w-4" />
                     </Button>

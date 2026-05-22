@@ -167,13 +167,13 @@ export function TeamsManager({ filterDivision }: { filterDivision?: string }) {
   })
 
   return (
-    <section className="border border-zinc-800 bg-zinc-950 p-8 flex flex-col relative mt-10">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8">
+    <section className="border border-zinc-800 bg-zinc-950 p-4 md:p-8 flex flex-col relative mt-6 md:mt-10 overflow-hidden w-full">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-6 md:mb-8">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight italic text-white flex items-center gap-3">
-            <Users className="h-6 w-6 text-emerald-500" /> Team Roster Manager
+          <h2 className="text-xl md:text-2xl font-bold tracking-tight italic text-white flex items-center gap-3">
+            <Users className="h-5 w-5 md:h-6 md:w-6 text-emerald-500" /> Team Roster Manager
           </h2>
-          <p className="text-xs text-zinc-500 font-semibold uppercase tracking-widest mt-1">Configured Teams</p>
+          <p className="text-[10px] md:text-xs text-zinc-500 font-semibold uppercase tracking-widest mt-1">Configured Teams</p>
         </div>
         
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
@@ -184,7 +184,7 @@ export function TeamsManager({ filterDivision }: { filterDivision?: string }) {
             onChange={e => setSearchQuery(e.target.value)}
             className="w-full md:w-64 bg-zinc-900 border-zinc-800 focus:border-emerald-500/50"
           />
-          <Button onClick={() => handleOpenModal()} className="w-full md:w-auto text-xs border-emerald-500/20 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-black">
+          <Button onClick={() => handleOpenModal()} className="w-full md:w-auto text-[10px] md:text-xs border-emerald-500/20 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-black">
             <Plus className="h-4 w-4 mr-2" /> Register Team
           </Button>
         </div>
@@ -216,9 +216,9 @@ export function TeamsManager({ filterDivision }: { filterDivision?: string }) {
       ) : (
         <div className="space-y-2">
           {displayedTeams.map((t) => (
-            <div key={t.id} className="flex items-center justify-between py-4 border-b border-zinc-900 hover:bg-zinc-900/40 px-3 transition-colors group cursor-default">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-sm bg-zinc-900 border border-zinc-800 flex items-center justify-center overflow-hidden shrink-0">
+            <div key={t.id} className="flex flex-col md:flex-row md:items-center justify-between py-4 border-b border-zinc-900 hover:bg-zinc-900/40 px-3 transition-colors group cursor-default gap-4 md:gap-3">
+              <div className="flex items-start md:items-center gap-4 w-full md:w-auto">
+                <div className="w-12 h-12 rounded-sm bg-zinc-900 border border-zinc-800 flex items-center justify-center overflow-hidden shrink-0 mt-1 md:mt-0">
                    {t.logo_url ? (
                      <img src={t.logo_url} alt={t.name} className="w-full h-full object-cover" />
                    ) : (
@@ -226,20 +226,20 @@ export function TeamsManager({ filterDivision }: { filterDivision?: string }) {
                    )}
                 </div>
                 <div>
-                  <p className="text-[10px] text-emerald-500 font-bold tracking-widest uppercase mb-1">
+                  <p className="text-[10px] text-emerald-500 font-bold tracking-widest uppercase mb-1 truncate">
                     [{t.division}] {t.short_name && `${t.short_name}`}
                   </p>
-                  <h3 className="text-lg font-medium text-white flex items-center gap-2">
-                    {t.name}
+                  <h3 className="text-base md:text-lg font-medium text-white flex flex-wrap items-center gap-1 md:gap-2">
+                    <span className="truncate max-w-[200px] sm:max-w-none">{t.name}</span>
                     {t.clubs?.name && (
-                      <span className="text-[10px] text-zinc-500 italic font-normal tracking-wide ml-2 block sm:inline">
+                      <span className="text-[8px] md:text-[10px] text-zinc-500 italic font-normal tracking-wide block sm:inline shrink-0">
                         Club: {t.clubs.name}
                       </span>
                     )}
                   </h3>
                 </div>
               </div>
-              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                 <Button variant="ghost" size="sm" onClick={() => handleOpenModal(t)} className="h-8 px-2 text-zinc-400 hover:text-emerald-500">
                   <Edit2 className="h-4 w-4" />
                 </Button>
