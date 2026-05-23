@@ -331,9 +331,14 @@ export default function RefereeConsole() {
     setIsCapturing(true);
 
     try {
+      window.scrollTo(0, 0);
       await new Promise((r) => setTimeout(r, 800)); // Larger delay for reliability
       if (matchSummaryRef.current) {
-        const canvas = await html2canvas(matchSummaryRef.current, { backgroundColor: '#09090b', scale: 2 });
+        const canvas = await html2canvas(matchSummaryRef.current, { 
+          backgroundColor: '#09090b', 
+          scale: 2,
+          logging: false 
+        });
         canvas.toBlob((blob) => {
           if (!blob) {
              alert("Warning: Failed to generate match proof screenshot. Match will still be finalized.");
@@ -483,51 +488,20 @@ export default function RefereeConsole() {
   });
 
   return (
-    <div className="flex-1 flex flex-col h-full relative overflow-hidden bg-zinc-950">
-      {/* Official Match Proof Layer */}
+    <div className="flex-1 flex flex-col h-full relative bg-zinc-950">
+      
+      {/* Hidden Offscreen Proof Component for Capture (No transforms/filters for iOS compatibility) */}
       <div 
-        className={isCapturing ? "fixed inset-0 z-50 flex flex-col items-center justify-start bg-zinc-950/95 backdrop-blur-sm overflow-auto pt-20" : "fixed -left-[9999px] -top-[9999px] z-[-100]"}
-        style={{ opacity: 1, pointerEvents: isCapturing ? "auto" : "none" }}
+        className="fixed top-0 left-0 -z-50 pointer-events-none" 
+        style={{ opacity: 0.001, visibility: 'visible' }}
       >
-        {isCapturing && !proofBlobUrl && (
-          <div className="text-amber-500 font-bold uppercase tracking-widest mb-6 animate-pulse z-50">
-            Generating Official Match Proof...
+        <div 
+          ref={matchSummaryRef} 
+          className="w-[800px] shrink-0 bg-zinc-950 p-12 border-8 border-amber-500 flex flex-col font-sans"
+        >
+          <div className="text-center mb-8">
+            <h2 className="text-amber-500 font-black text-3xl uppercase tracking-widest italic mb-2">DVOC OFFICIAL MATCH PROOF</h2>
           </div>
-        )}
-
-        {proofBlobUrl && (
-          <div className="flex flex-col items-center justify-center gap-6 z-50 fixed inset-0 bg-zinc-950/95 backdrop-blur-md p-4">
-            <h2 className="text-2xl md:text-3xl font-black italic text-amber-500 uppercase tracking-widest text-center">Match Summary Ready</h2>
-            <p className="text-sm text-zinc-400 max-w-sm text-center mb-4">
-              The official match proof has been generated. Please save it to your device before completing the match finalization.
-            </p>
-            
-            <a 
-              href={proofBlobUrl}
-              download={proofFilename}
-              className="px-6 py-4 md:px-8 bg-amber-500 text-black font-black uppercase tracking-widest hover:bg-amber-400 transition-colors rounded-sm shadow-[0_0_20px_rgba(245,158,11,0.2)] text-center flex items-center gap-2"
-            >
-               <Save className="h-5 w-5" />
-               Save Official Match Proof
-            </a>
-            
-            <button 
-              onClick={completeFinalization}
-              className="mt-8 px-6 py-2 border border-zinc-700 text-zinc-400 font-bold uppercase tracking-widest hover:text-white hover:bg-zinc-800 transition-colors rounded-sm flex items-center justify-center gap-2"
-            >
-                Complete Finalization <ChevronLeft className="h-4 w-4 rotate-180" />
-            </button>
-          </div>
-        )}
-
-        <div style={{ transformOrigin: 'top center', transform: isCapturing && !proofBlobUrl ? 'scale(0.4) translateY(20%)' : 'none' }}>
-          <div 
-            ref={matchSummaryRef} 
-            className="w-[800px] shrink-0 bg-zinc-950 p-12 border-8 border-amber-500 flex flex-col font-sans"
-          >
-            <div className="text-center mb-8">
-              <h2 className="text-amber-500 font-black text-3xl uppercase tracking-widest italic mb-2">DVOC OFFICIAL MATCH PROOF</h2>
-            </div>
 
           <div className="text-center mb-10 pb-10 border-b border-zinc-800">
              <h1 className="text-5xl font-black uppercase text-white tracking-widest mb-4">
@@ -592,8 +566,41 @@ export default function RefereeConsole() {
              </div>
           </div>
         </div>
-        </div>
       </div>
+
+      {/* Capture Dialog Layer */}
+      {isCapturing && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-zinc-950/95 backdrop-blur-md p-4">
+          {!proofBlobUrl ? (
+            <div className="text-amber-500 font-bold uppercase tracking-widest animate-pulse z-50">
+              Generating Official Match Proof...
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-6 z-50 max-w-sm w-full mx-auto">
+              <h2 className="text-2xl md:text-3xl font-black italic text-amber-500 uppercase tracking-widest text-center">Match Summary Ready</h2>
+              <p className="text-sm text-zinc-400 text-center mb-4">
+                The official match proof has been generated. Please save it to your device before completing the match finalization.
+              </p>
+              
+              <a 
+                href={proofBlobUrl}
+                download={proofFilename}
+                className="w-full px-6 py-4 bg-amber-500 text-black font-black uppercase tracking-widest hover:bg-amber-400 transition-colors rounded-sm shadow-[0_0_20px_rgba(245,158,11,0.2)] flex items-center justify-center gap-2"
+              >
+                 <Save className="h-5 w-5" />
+                 Save Official Match Proof
+              </a>
+              
+              <button 
+                onClick={completeFinalization}
+                className="mt-8 px-6 py-2 border border-zinc-700 text-zinc-400 font-bold uppercase tracking-widest hover:text-white hover:bg-zinc-800 transition-colors rounded-sm flex items-center justify-center gap-2"
+              >
+                  Complete Finalization <ChevronLeft className="h-4 w-4 rotate-180" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Header */}
       <header className="h-16 shrink-0 border-b border-zinc-900 flex items-center justify-between px-4 sticky top-0 bg-zinc-950/90 backdrop-blur-md z-20">
