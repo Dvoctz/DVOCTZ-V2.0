@@ -12,11 +12,55 @@ export default function RefereeConsole() {
   const [timerTenths, setTimerTenths] = useState(0); // in tenths of a second for precision
   const [serviceSide, setServiceSide] = useState<"t1" | "t2">("t1");
   const [history, setHistory] = useState<any[]>([]); // To support undo
-
+  const wakeLockRef = useRef<any>(null);
 
   useEffect(() => {
     fetchFixtures();
   }, []);
+
+  // Wake Lock implementation
+  useEffect(() => {
+    let isMounted = true;
+    let wakeLock: any = null;
+
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await (navigator as any).wakeLock.request('screen');
+          wakeLockRef.current = wakeLock;
+        }
+      } catch (err: any) {
+        console.warn(`Wake Lock error: ${err.name}, ${err.message}`);
+      }
+    };
+
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && selectedFixture) {
+        await requestWakeLock();
+      }
+    };
+
+    if (selectedFixture) {
+      requestWakeLock();
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    } else {
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release().then(() => {
+          wakeLockRef.current = null;
+        }).catch(() => {});
+      }
+    }
+
+    return () => {
+      isMounted = false;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release().then(() => {
+          wakeLockRef.current = null;
+        }).catch(() => {});
+      }
+    };
+  }, [selectedFixture]);
 
   const fetchFixtures = async () => {
     try {
