@@ -9,6 +9,7 @@ import { SetScoreHistory } from "@/components/ui/set-score-history";
 export default function MatchDetailPage() {
   const { id } = useParams();
   const [fixture, setFixture] = useState<any>(null);
+  const [h2hFixtures, setH2hFixtures] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,6 +28,21 @@ export default function MatchDetailPage() {
           ...data,
           score: data.is_live && data.live_state ? data.live_state : data.score,
         });
+
+        if (data.team1_id && data.team2_id) {
+          const { data: h2hData } = await supabase
+            .from("fixtures")
+            .select("*, team1:teams!team1_id(name, logo_url), team2:teams!team2_id(name, logo_url), tournaments(name)")
+            .in("team1_id", [data.team1_id, data.team2_id])
+            .in("team2_id", [data.team1_id, data.team2_id])
+            .eq("status", "completed")
+            .order("date_time", { ascending: false })
+            .limit(5);
+            
+          if (h2hData) {
+            setH2hFixtures(h2hData.filter((f: any) => f.id !== Number(id)));
+          }
+        }
       }
       setLoading(false);
     };
@@ -80,18 +96,18 @@ export default function MatchDetailPage() {
 
           <div className="flex flex-col md:flex-row items-center justify-between gap-8 md:gap-4 max-w-4xl mx-auto">
             {/* Team 1 */}
-            <div className="flex-1 flex flex-col items-center text-center">
+            <Link to={fixture.team1_id ? `/team/${fixture.team1_id}` : "#"} className="flex-1 flex flex-col items-center text-center group cursor-pointer">
               {fixture.team1?.logo_url ? (
-                <div className="w-24 h-24 md:w-32 md:h-32 mb-4 bg-white/5 rounded-full p-2 border border-zinc-800 flex items-center justify-center overflow-hidden">
+                <div className="w-24 h-24 md:w-32 md:h-32 mb-4 bg-white/5 rounded-full p-2 border border-zinc-800 flex items-center justify-center overflow-hidden group-hover:border-amber-500/50 transition-colors">
                   <img src={fixture.team1.logo_url} alt="" className="w-full h-full object-contain" />
                 </div>
               ) : (
-                <div className="w-24 h-24 md:w-32 md:h-32 mb-4 bg-zinc-900 border border-zinc-800 rounded-full flex items-center justify-center">
+                <div className="w-24 h-24 md:w-32 md:h-32 mb-4 bg-zinc-900 border border-zinc-800 rounded-full flex items-center justify-center group-hover:border-amber-500/50 transition-colors">
                   <span className="text-3xl font-black text-zinc-700">{fixture.team1?.name?.substring(0, 2) || "T1"}</span>
                 </div>
               )}
-              <h2 className="text-2xl md:text-3xl font-black italic tracking-tighter uppercase">{fixture.team1?.name || "TBA"}</h2>
-            </div>
+              <h2 className="text-2xl md:text-3xl font-black italic tracking-tighter uppercase group-hover:text-amber-500 transition-colors">{fixture.team1?.name || "TBA"}</h2>
+            </Link>
             
             {/* Score Center */}
             <div className="flex flex-col items-center justify-center shrink-0 px-4">
@@ -123,18 +139,18 @@ export default function MatchDetailPage() {
             </div>
 
             {/* Team 2 */}
-            <div className="flex-1 flex flex-col items-center text-center">
+            <Link to={fixture.team2_id ? `/team/${fixture.team2_id}` : "#"} className="flex-1 flex flex-col items-center text-center group cursor-pointer">
               {fixture.team2?.logo_url ? (
-                <div className="w-24 h-24 md:w-32 md:h-32 mb-4 bg-white/5 rounded-full p-2 border border-zinc-800 flex items-center justify-center overflow-hidden">
+                <div className="w-24 h-24 md:w-32 md:h-32 mb-4 bg-white/5 rounded-full p-2 border border-zinc-800 flex items-center justify-center overflow-hidden group-hover:border-amber-500/50 transition-colors">
                   <img src={fixture.team2.logo_url} alt="" className="w-full h-full object-contain" />
                 </div>
               ) : (
-                <div className="w-24 h-24 md:w-32 md:h-32 mb-4 bg-zinc-900 border border-zinc-800 rounded-full flex items-center justify-center">
+                <div className="w-24 h-24 md:w-32 md:h-32 mb-4 bg-zinc-900 border border-zinc-800 rounded-full flex items-center justify-center group-hover:border-amber-500/50 transition-colors">
                   <span className="text-3xl font-black text-zinc-700">{fixture.team2?.name?.substring(0, 2) || "T2"}</span>
                 </div>
               )}
-              <h2 className="text-2xl md:text-3xl font-black italic tracking-tighter uppercase">{fixture.team2?.name || "TBA"}</h2>
-            </div>
+              <h2 className="text-2xl md:text-3xl font-black italic tracking-tighter uppercase group-hover:text-amber-500 transition-colors">{fixture.team2?.name || "TBA"}</h2>
+            </Link>
           </div>
           
           <div className="mt-12 flex justify-center">
@@ -160,9 +176,64 @@ export default function MatchDetailPage() {
             <span className="text-2xl font-black italic text-zinc-700 uppercase tracking-tighter mb-2">Match Analytics</span>
             <p className="text-[10px] uppercase font-bold tracking-widest text-amber-500">Feature Coming Soon</p>
           </div>
-          <div className="border border-zinc-900 bg-zinc-950/50 p-8 rounded-sm text-center flex flex-col items-center justify-center h-48 opacity-50 md:col-span-2">
-            <span className="text-2xl font-black italic text-zinc-700 uppercase tracking-tighter mb-2">Head to Head History</span>
-            <p className="text-[10px] uppercase font-bold tracking-widest text-amber-500">Feature Coming Soon</p>
+          <div className="border border-zinc-900 bg-zinc-950/50 p-8 rounded-sm text-center flex flex-col md:col-span-2">
+            <span className="text-2xl font-black italic text-zinc-700 uppercase tracking-tighter mb-6">Head to Head History</span>
+            
+            {h2hFixtures.length === 0 ? (
+              <p className="text-[10px] uppercase font-bold tracking-widest text-zinc-500 py-8">No previous matchups found</p>
+            ) : (
+              <div className="flex flex-col gap-4 text-left w-full max-w-2xl mx-auto">
+                {h2hFixtures.map((h2h) => {
+                  const t1Score =
+                    typeof h2h.score?.team1Score === "number"
+                      ? h2h.score.team1Score
+                      : 0;
+                  const t2Score =
+                    typeof h2h.score?.team2Score === "number"
+                      ? h2h.score.team2Score
+                      : 0;
+                  
+                  return (
+                    <Link
+                      key={h2h.id}
+                      to={`/matches/${h2h.id}`}
+                      className="flex items-center justify-between p-4 bg-zinc-900/50 hover:bg-zinc-900 border border-zinc-800 transition-colors group"
+                    >
+                      <div className="flex-1 flex justify-end items-center gap-3">
+                        <span className={`text-sm font-bold truncate ${t1Score > t2Score ? 'text-amber-500' : 'text-zinc-300'}`}>
+                          {h2h.team1?.name || "TBD"}
+                        </span>
+                        {h2h.team1?.logo_url ? (
+                          <img src={h2h.team1.logo_url} className="w-6 h-6 object-contain shrink-0" alt="" />
+                        ) : (
+                          <div className="w-6 h-6 bg-zinc-800 rounded-full shrink-0" />
+                        )}
+                      </div>
+                      
+                      <div className="px-6 flex flex-col items-center justify-center shrink-0">
+                        <span className="text-xs text-zinc-500 font-mono mb-1">{new Date(h2h.date_time).toLocaleDateString()}</span>
+                        <div className="flex items-center gap-3">
+                          <span className={`text-xl font-black tabular-nums ${t1Score > t2Score ? 'text-white' : 'text-zinc-400'}`}>{t1Score}</span>
+                          <span className="text-sm font-bold text-zinc-600">-</span>
+                          <span className={`text-xl font-black tabular-nums ${t2Score > t1Score ? 'text-white' : 'text-zinc-400'}`}>{t2Score}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex-1 flex justify-start items-center gap-3">
+                        {h2h.team2?.logo_url ? (
+                          <img src={h2h.team2.logo_url} className="w-6 h-6 object-contain shrink-0" alt="" />
+                        ) : (
+                          <div className="w-6 h-6 bg-zinc-800 rounded-full shrink-0" />
+                        )}
+                        <span className={`text-sm font-bold truncate ${t2Score > t1Score ? 'text-amber-500' : 'text-zinc-300'}`}>
+                          {h2h.team2?.name || "TBD"}
+                        </span>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>

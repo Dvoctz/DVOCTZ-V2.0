@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { Trophy } from "lucide-react";
+import { Link } from "react-router-dom";
 
 type Team = {
   id: number;
@@ -314,7 +315,7 @@ export function TournamentStandings({
                 {idx + 1}
               </td>
               <td className="px-4 py-3 font-bold text-white whitespace-nowrap">
-                <div className="flex items-center gap-2">
+                <Link to={`/team/${s.team_id}`} className="flex items-center gap-2 hover:text-amber-500 transition-colors">
                   {s.logo_url && (
                     <div className="w-5 h-5 shrink-0 bg-white/5 rounded-sm p-0.5 flex items-center justify-center">
                       <img
@@ -325,7 +326,7 @@ export function TournamentStandings({
                     </div>
                   )}
                   <span>{s.team_name}</span>
-                </div>
+                </Link>
               </td>
               <td className="px-2 py-3 text-center text-zinc-400">
                 {s.played}

@@ -333,9 +333,13 @@ export default function PlayerProfilePage() {
                     <p className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold mb-0.5">
                       Club Affiliation
                     </p>
-                    <p className="text-sm font-semibold text-white">
-                      {player.clubs?.name || "Unaffiliated"}
-                    </p>
+                    {player.clubs ? (
+                      <Link to={`/club/${player.clubs.id}`} className="text-sm font-semibold text-white hover:text-amber-500 transition-colors">
+                        {player.clubs.name}
+                      </Link>
+                    ) : (
+                      <p className="text-sm font-semibold text-white">Unaffiliated</p>
+                    )}
                   </div>
                 </div>
 

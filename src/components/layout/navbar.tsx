@@ -66,6 +66,12 @@ export function Navbar() {
               Tournaments
             </Link>
             <Link
+              to="/clubs"
+              className={`${location.pathname.startsWith("/clubs") ? "text-amber-400 hover:text-amber-300" : "hover:text-white"} transition-colors`}
+            >
+              Clubs
+            </Link>
+            <Link
               to="/players"
               className={`${location.pathname.startsWith("/players") ? "text-amber-400 hover:text-amber-300" : "hover:text-white"} transition-colors`}
             >
@@ -132,6 +138,12 @@ export function Navbar() {
               className={`text-2xl font-black italic tracking-tighter uppercase ${location.pathname.startsWith("/tournaments") ? "text-amber-500" : "text-white"}`}
             >
               Tournaments
+            </Link>
+            <Link
+              to="/clubs"
+              className={`text-2xl font-black italic tracking-tighter uppercase ${location.pathname.startsWith("/clubs") ? "text-amber-500" : "text-white"}`}
+            >
+              Clubs
             </Link>
             <Link
               to="/players"

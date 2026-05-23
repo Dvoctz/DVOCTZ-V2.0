@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,7 +30,10 @@ type Tournament = {
 type FixturePreview = {
   id: number;
   tournament_id: number;
+  team1_id: number;
+  team2_id: number;
   status: string;
+  is_live?: boolean;
   date_time: string;
   ground: string;
   best_of: number;
@@ -41,12 +44,22 @@ type FixturePreview = {
     sets?: { team1Points: number; team2Points: number }[];
     team1Score?: number;
     team2Score?: number;
+    activeSet?: number;
+    servingTeam?: string;
+    timer?: any;
   } | null;
   winner?: { name: string };
   tournaments?: { name: string; division?: string; phase?: string };
 };
 
 export default function HomePage() {
+  const navigate = useNavigate();
+  const handleTeamClick = (e: React.MouseEvent, teamId: number | null) => {
+    if (!teamId) return;
+    e.preventDefault();
+    e.stopPropagation();
+    navigate(`/team/${teamId}`);
+  };
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [upcomingFixtures, setUpcomingFixtures] = useState<FixturePreview[]>(
     [],
@@ -277,9 +290,12 @@ export default function HomePage() {
         </span>
       </div>
       <div className="flex justify-between items-center gap-3 mb-5">
-        <div className="flex-1 min-w-0 text-center flex flex-col items-center justify-center">
+        <div 
+          className="flex-1 min-w-0 text-center flex flex-col items-center justify-center cursor-pointer group/team"
+          onClick={(e) => handleTeamClick(e, f.team1_id)}
+        >
           {f.team1?.logo_url ? (
-            <div className="w-8 h-8 mb-2 bg-white/5 rounded-full p-1 border border-zinc-800 flex items-center justify-center overflow-hidden">
+            <div className="w-8 h-8 mb-2 bg-white/5 rounded-full p-1 border border-zinc-800 flex items-center justify-center overflow-hidden group-hover/team:border-amber-500/50 transition-colors">
               <img
                 src={f.team1.logo_url}
                 alt={f.team1.name}
@@ -287,13 +303,13 @@ export default function HomePage() {
               />
             </div>
           ) : (
-            <div className="w-8 h-8 mb-2 bg-zinc-900 border border-zinc-800 rounded-full flex items-center justify-center">
+            <div className="w-8 h-8 mb-2 bg-zinc-900 border border-zinc-800 rounded-full flex items-center justify-center group-hover/team:border-amber-500/50 transition-colors">
               <span className="text-[10px] font-bold text-zinc-500 uppercase">
                 {f.team1?.name?.substring(0, 2) || "T1"}
               </span>
             </div>
           )}
-          <span className="flex items-center gap-1.5 text-sm font-bold text-white truncate max-w-full">
+          <span className="flex items-center gap-1.5 text-sm font-bold text-white truncate max-w-full group-hover/team:text-amber-500 transition-colors">
             {isFixtureLive(f) && f.score?.servingTeam === "t1" && (
               <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce shrink-0"></span>
             )}
@@ -315,9 +331,12 @@ export default function HomePage() {
             vs
           </span>
         )}
-        <div className="flex-1 min-w-0 text-center flex flex-col items-center justify-center">
+        <div 
+          className="flex-1 min-w-0 text-center flex flex-col items-center justify-center cursor-pointer group/team"
+          onClick={(e) => handleTeamClick(e, f.team2_id)}
+        >
           {f.team2?.logo_url ? (
-            <div className="w-8 h-8 mb-2 bg-white/5 rounded-full p-1 border border-zinc-800 flex items-center justify-center overflow-hidden">
+            <div className="w-8 h-8 mb-2 bg-white/5 rounded-full p-1 border border-zinc-800 flex items-center justify-center overflow-hidden group-hover/team:border-amber-500/50 transition-colors">
               <img
                 src={f.team2.logo_url}
                 alt={f.team2.name}
@@ -325,13 +344,13 @@ export default function HomePage() {
               />
             </div>
           ) : (
-            <div className="w-8 h-8 mb-2 bg-zinc-900 border border-zinc-800 rounded-full flex items-center justify-center">
+            <div className="w-8 h-8 mb-2 bg-zinc-900 border border-zinc-800 rounded-full flex items-center justify-center group-hover/team:border-amber-500/50 transition-colors">
               <span className="text-[10px] font-bold text-zinc-500 uppercase">
                 {f.team2?.name?.substring(0, 2) || "T2"}
               </span>
             </div>
           )}
-          <span className="flex items-center gap-1.5 text-sm font-bold text-white truncate max-w-full">
+          <span className="flex items-center gap-1.5 text-sm font-bold text-white truncate max-w-full group-hover/team:text-amber-500 transition-colors">
             <span className="truncate">{f.team2?.name || "TBD"}</span>
             {isFixtureLive(f) && f.score?.servingTeam === "t2" && (
               <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce shrink-0"></span>

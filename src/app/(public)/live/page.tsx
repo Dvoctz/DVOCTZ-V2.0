@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase/client";
 import { LiveTimer } from "@/components/ui/live-timer";
 import { SetScoreHistory } from "@/components/ui/set-score-history";
@@ -9,6 +9,8 @@ import { SetScoreHistory } from "@/components/ui/set-score-history";
 type FixturePreview = {
   id: number;
   tournament_id: number;
+  team1_id: number;
+  team2_id: number;
   status: string;
   is_live: boolean;
   live_state: any;
@@ -30,6 +32,13 @@ type FixturePreview = {
 };
 
 export default function LiveMatchCenterPage() {
+  const navigate = useNavigate();
+  const handleTeamClick = (e: React.MouseEvent, teamId: number | null) => {
+    if (!teamId) return;
+    e.preventDefault();
+    e.stopPropagation();
+    navigate(`/team/${teamId}`);
+  };
   const [liveFixtures, setLiveFixtures] = useState<FixturePreview[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -85,9 +94,12 @@ export default function LiveMatchCenterPage() {
       </div>
       
       <div className="flex justify-between items-center gap-4 mb-6 relative z-10">
-        <div className="flex-1 text-center flex flex-col items-center justify-center">
+        <div 
+          className="flex-1 text-center flex flex-col items-center justify-center cursor-pointer group"
+          onClick={(e) => handleTeamClick(e, f.team1_id)}
+        >
           {f.team1?.logo_url ? (
-            <div className="w-12 h-12 mb-3 bg-white/5 rounded-full p-1.5 border border-zinc-800 flex items-center justify-center overflow-hidden">
+            <div className="w-12 h-12 mb-3 bg-white/5 rounded-full p-1.5 border border-zinc-800 flex items-center justify-center overflow-hidden group-hover:border-amber-500/50 transition-colors">
               <img
                 src={f.team1.logo_url}
                 alt={f.team1.name}
@@ -95,13 +107,13 @@ export default function LiveMatchCenterPage() {
               />
             </div>
           ) : (
-            <div className="w-12 h-12 mb-3 bg-zinc-900 border border-zinc-800 rounded-full flex items-center justify-center">
+            <div className="w-12 h-12 mb-3 bg-zinc-900 border border-zinc-800 rounded-full flex items-center justify-center group-hover:border-amber-500/50 transition-colors">
               <span className="text-sm font-bold text-zinc-500 uppercase">
                 {f.team1?.name?.substring(0, 2) || "T1"}
               </span>
             </div>
           )}
-          <span className="flex items-center gap-1.5 text-base font-black text-white truncate max-w-full">
+          <span className="flex items-center gap-1.5 text-base font-black text-white truncate max-w-full group-hover:text-amber-500 transition-colors">
             {f.score?.servingTeam === "t1" && (
               <span className="w-2 h-2 bg-amber-500 rounded-full animate-bounce shrink-0"></span>
             )}
@@ -119,9 +131,12 @@ export default function LiveMatchCenterPage() {
            </span>
         </div>
         
-        <div className="flex-1 text-center flex flex-col items-center justify-center">
+        <div 
+          className="flex-1 text-center flex flex-col items-center justify-center cursor-pointer group"
+          onClick={(e) => handleTeamClick(e, f.team2_id)}
+        >
           {f.team2?.logo_url ? (
-            <div className="w-12 h-12 mb-3 bg-white/5 rounded-full p-1.5 border border-zinc-800 flex items-center justify-center overflow-hidden">
+            <div className="w-12 h-12 mb-3 bg-white/5 rounded-full p-1.5 border border-zinc-800 flex items-center justify-center overflow-hidden group-hover:border-amber-500/50 transition-colors">
               <img
                 src={f.team2.logo_url}
                 alt={f.team2.name}
@@ -129,13 +144,13 @@ export default function LiveMatchCenterPage() {
               />
             </div>
           ) : (
-            <div className="w-12 h-12 mb-3 bg-zinc-900 border border-zinc-800 rounded-full flex items-center justify-center">
+            <div className="w-12 h-12 mb-3 bg-zinc-900 border border-zinc-800 rounded-full flex items-center justify-center group-hover:border-amber-500/50 transition-colors">
               <span className="text-sm font-bold text-zinc-500 uppercase">
                 {f.team2?.name?.substring(0, 2) || "T2"}
               </span>
             </div>
           )}
-          <span className="flex items-center gap-1.5 text-base font-black text-white truncate max-w-full">
+          <span className="flex items-center gap-1.5 text-base font-black text-white truncate max-w-full group-hover:text-amber-500 transition-colors">
             <span className="truncate">{f.team2?.name || "TBD"}</span>
             {f.score?.servingTeam === "t2" && (
               <span className="w-2 h-2 bg-amber-500 rounded-full animate-bounce shrink-0"></span>

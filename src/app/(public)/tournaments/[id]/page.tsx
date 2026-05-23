@@ -1,6 +1,6 @@
 import React from "react";
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase/client";
 import { LiveTimer } from "@/components/ui/live-timer";
 import { SetScoreHistory } from "@/components/ui/set-score-history";
@@ -43,6 +43,14 @@ type Fixture = {
 
 export default function TournamentDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  
+  const handleTeamClick = (e: React.MouseEvent, teamId: number | null) => {
+    if (!teamId) return;
+    e.preventDefault();
+    e.stopPropagation();
+    navigate(`/team/${teamId}`);
+  };
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [rosters, setRosters] = useState<any[]>([]);
@@ -132,13 +140,19 @@ export default function TournamentDetailPage() {
 
       <div className="flex flex-col gap-2 my-4">
         <div className="flex justify-between items-center w-full">
-          <span className="text-sm font-bold text-white">
+          <span 
+            className="text-sm font-bold text-white hover:text-amber-500 transition-colors cursor-pointer"
+            onClick={(e) => handleTeamClick(e, f.team1_id)}
+          >
             {f.team1?.name || "TBD"}
           </span>
         </div>
         <div className="text-[10px] text-zinc-600 font-bold uppercase">vs</div>
         <div className="flex justify-between items-center w-full">
-          <span className="text-sm font-bold text-white">
+          <span 
+            className="text-sm font-bold text-white hover:text-amber-500 transition-colors cursor-pointer"
+            onClick={(e) => handleTeamClick(e, f.team2_id)}
+          >
             {f.team2?.name || "TBD"}
           </span>
         </div>
@@ -190,7 +204,10 @@ export default function TournamentDetailPage() {
 
       <div className="flex flex-col gap-4 my-2 relative z-10 p-5 bg-zinc-950/80 border border-zinc-900 rounded-sm">
         <div className="flex justify-between items-center w-full gap-4">
-          <span className="text-lg font-bold text-white truncate flex items-center gap-2">
+          <span 
+            className="text-lg font-bold text-white truncate flex items-center gap-2 hover:text-amber-500 transition-colors cursor-pointer"
+            onClick={(e) => handleTeamClick(e, f.team1_id)}
+          >
             {f.score?.servingTeam === "t1" && <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce"></span>}
             {f.team1?.name || "TBD"}
           </span>
@@ -200,7 +217,10 @@ export default function TournamentDetailPage() {
         </div>
         <div className="w-full h-px bg-zinc-900 my-1" />
         <div className="flex justify-between items-center w-full gap-4">
-          <span className="text-lg font-bold text-white truncate flex items-center gap-2">
+          <span 
+            className="text-lg font-bold text-white truncate flex items-center gap-2 hover:text-amber-500 transition-colors cursor-pointer"
+            onClick={(e) => handleTeamClick(e, f.team2_id)}
+          >
             {f.score?.servingTeam === "t2" && <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce"></span>}
             {f.team2?.name || "TBD"}
           </span>
@@ -255,7 +275,8 @@ export default function TournamentDetailPage() {
         <div className="flex flex-col gap-3 my-4">
           <div className="flex justify-between items-center w-full gap-4">
             <span
-              className={`text-sm font-bold truncate ${t1Winner ? "text-amber-500" : "text-zinc-300"}`}
+              className={`text-sm font-bold truncate hover:text-amber-500 transition-colors cursor-pointer ${t1Winner ? "text-amber-500" : "text-zinc-300"}`}
+              onClick={(e) => handleTeamClick(e, f.team1_id)}
             >
               {f.team1?.name || "TBD"}{" "}
               {t1Winner && <span className="ml-1 opacity-80">🏆</span>}
@@ -266,7 +287,8 @@ export default function TournamentDetailPage() {
           </div>
           <div className="flex justify-between items-center w-full gap-4">
             <span
-              className={`text-sm font-bold truncate ${t2Winner ? "text-amber-500" : "text-zinc-300"}`}
+              className={`text-sm font-bold truncate hover:text-amber-500 transition-colors cursor-pointer ${t2Winner ? "text-amber-500" : "text-zinc-300"}`}
+              onClick={(e) => handleTeamClick(e, f.team2_id)}
             >
               {f.team2?.name || "TBD"}{" "}
               {t2Winner && <span className="ml-1 opacity-80">🏆</span>}
@@ -345,7 +367,8 @@ export default function TournamentDetailPage() {
                 <div className="w-4 h-4 bg-zinc-800 rounded-full" />
               )}
               <span
-                className={`text-xs font-bold truncate flex items-center gap-1.5 ${t1Winner ? "text-amber-500" : "text-zinc-300"}`}
+                className={`text-xs font-bold truncate flex items-center gap-1.5 hover:text-amber-500 transition-colors cursor-pointer ${t1Winner ? "text-amber-500" : "text-zinc-300"}`}
+                onClick={(e) => handleTeamClick(e, f.team1_id)}
               >
                 {isLive && f.score?.servingTeam === "t1" && <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce shrink-0"></span>}
                 {f.team1?.name || "TBD"}
@@ -371,7 +394,8 @@ export default function TournamentDetailPage() {
                 <div className="w-4 h-4 bg-zinc-800 rounded-full" />
               )}
               <span
-                className={`text-xs font-bold truncate flex items-center gap-1.5 ${t2Winner ? "text-amber-500" : "text-zinc-300"}`}
+                className={`text-xs font-bold truncate flex items-center gap-1.5 hover:text-amber-500 transition-colors cursor-pointer ${t2Winner ? "text-amber-500" : "text-zinc-300"}`}
+                onClick={(e) => handleTeamClick(e, f.team2_id)}
               >
                 {f.team2?.name || "TBD"}
                 {isLive && f.score?.servingTeam === "t2" && <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce shrink-0"></span>}
@@ -575,9 +599,9 @@ export default function TournamentDetailPage() {
               className="bg-zinc-950 border border-zinc-900 overflow-hidden flex flex-col group hover:border-amber-500/30 transition-colors"
             >
               <div className="bg-zinc-900/50 border-b border-zinc-900 px-6 py-4 flex justify-between items-center">
-                <h3 className="text-lg font-black text-white italic truncate pr-4 group-hover:text-amber-500 transition-colors">
+                <Link to={`/team/${teamId}`} className="text-lg font-black text-white italic truncate pr-4 group-hover:text-amber-500 transition-colors">
                   {data.teamName}
-                </h3>
+                </Link>
                 <span className="text-[9px] font-mono text-amber-500 px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded-sm shrink-0">
                   {data.players.length} / 12
                 </span>

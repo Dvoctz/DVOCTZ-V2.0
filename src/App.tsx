@@ -9,6 +9,9 @@ import TransfersPage from "@/app/(public)/transfers/page"
 import TournamentsArchivePage from "@/app/(public)/tournaments/page"
 import LiveMatchCenterPage from "@/app/(public)/live/page"
 import MatchDetailPage from "@/app/(public)/matches/[id]/page"
+import TeamDeepDivePage from "@/app/(public)/team/[id]/page"
+import ClubDeepDivePage from "@/app/(public)/club/[id]/page"
+import ClubsDirectoryPage from "@/app/(public)/clubs/page"
 import AdminOverview from "@/app/admin/page"
 import AdminTournaments from "@/app/admin/tournaments/page"
 import AdminTeams from "@/app/admin/teams/page"
@@ -35,6 +38,9 @@ const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: "/live", element: <LiveMatchCenterPage /> },
       { path: "/matches/:id", element: <MatchDetailPage /> },
+      { path: "/team/:id", element: <TeamDeepDivePage /> },
+      { path: "/club/:id", element: <ClubDeepDivePage /> },
+      { path: "/clubs", element: <ClubsDirectoryPage /> },
       { path: "/players", element: <PlayersDirectoryPage /> },
       { path: "/transfers", element: <TransfersPage /> },
       { path: "/tournaments", element: <TournamentsArchivePage /> },
