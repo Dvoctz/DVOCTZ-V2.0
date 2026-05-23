@@ -35,6 +35,7 @@ export default function ClubDeepDivePage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
   const [fixtures, setFixtures] = useState<any[]>([]);
+  const [rosters, setRosters] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<"overview" | "teams" | "players" | "statistics">("overview");
   const [loading, setLoading] = useState(true);
 
@@ -71,10 +72,18 @@ export default function ClubDeepDivePage() {
                 .order("date_time", { ascending: false })
             : Promise.resolve({ data: [] });
 
-          const [playersRes, fixturesRes] = await Promise.all([playersPromise, fixturesPromise]);
+          const tournamentTeamsPromise = teamIds.length > 0
+            ? supabase
+                .from("tournament_teams")
+                .select("tournament_id")
+                .in("team_id", teamIds)
+            : Promise.resolve({ data: [] });
+
+          const [playersRes, fixturesRes, tournamentTeamsRes] = await Promise.all([playersPromise, fixturesPromise, tournamentTeamsPromise]);
 
           if (playersRes.data) setPlayers(playersRes.data);
           if (fixturesRes.data) setFixtures(fixturesRes.data);
+          if (tournamentTeamsRes.data) setRosters(tournamentTeamsRes.data);
         }
       } catch (err) {
         console.error("Failed to load club data:", err);
@@ -206,7 +215,16 @@ export default function ClubDeepDivePage() {
 
     let finalsReached = 0;
     let tournamentsWon = 0;
-    let tournamentsEntered = new Set(validFixtures.map(f => f.tournament_id)).size;
+
+    const uniqueTournaments = new Set<string>();
+
+    rosters.forEach(r => {
+      if (r.tournament_id) {
+        uniqueTournaments.add(String(r.tournament_id));
+      }
+    });
+
+    let tournamentsEntered = uniqueTournaments.size;
 
     const teamStats: any[] = teams.map(t => ({ id: t.id, name: t.name, division: t.division, matches: 0, wins: 0, losses: 0, draws: 0 }));
 
