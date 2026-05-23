@@ -21,6 +21,7 @@ type Fixture = {
   team1_id: number | null;
   team2_id: number | null;
   status: string;
+  is_live?: boolean;
   stage?: string;
   date_time: string;
   ground: string;
@@ -33,6 +34,9 @@ type Fixture = {
     sets?: { team1Points: number; team2Points: number; winnerOverrideId?: string }[];
     team1Score?: number;
     team2Score?: number;
+    activeSet?: number;
+    servingTeam?: string;
+    timer?: any;
   } | null;
   winner?: { name: string };
 };
@@ -44,6 +48,17 @@ export default function TournamentDetailPage() {
   const [rosters, setRosters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [activeTab, setActiveTab] = useState("overview");
+
+  const TABS = [
+    { id: "overview", label: "Overview" },
+    { id: "fixtures", label: "Fixtures" },
+    { id: "standings", label: "Standings" },
+    { id: "teams", label: "Teams" },
+    { id: "live", label: "Live" },
+    { id: "statistics", label: "Statistics" },
+  ];
 
   useEffect(() => {
     const loadTournamentData = async () => {
@@ -424,8 +439,239 @@ export default function TournamentDetailPage() {
     );
   }
 
+  const renderOverviewTab = () => (
+    <div className="space-y-12 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      {tournament?.phase === "knockout" && (
+        <section className="bg-black border border-zinc-900 p-6 md:p-10 relative overflow-hidden shadow-xl">
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-amber-500/5 blur-[100px] rounded-full pointer-events-none" />
+          <h2 className="text-xl font-black tracking-widest uppercase text-white flex items-center gap-3 mb-10 border-b border-zinc-800 pb-4 relative z-10">
+            <div className="w-2 h-2 bg-amber-500 rotate-45" /> Knockout Bracket
+          </h2>
+          <div className="flex flex-col md:flex-row gap-8 overflow-x-auto pb-4 snap-x relative z-10 w-full min-h-[300px]">
+            {renderBracketColumn("Quarterfinals", ["quarterfinal"])}
+            {renderBracketColumn("Semifinals", ["semifinal"])}
+            {renderBracketColumn("Final", ["final"])}
+          </div>
+        </section>
+      )}
+      
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
+           <div>
+             <h3 className="text-sm font-bold uppercase tracking-widest text-white mb-4 border-b border-zinc-900 pb-2 flex justify-between items-center">
+               Recent & Upcoming
+               <button onClick={() => setActiveTab("fixtures")} className="text-[10px] text-amber-500 hover:underline">View All</button>
+             </h3>
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {fixtures.filter(f => f.status === 'completed').slice(-2).map(renderCompletedCard)}
+                {fixtures.filter(f => f.status === 'upcoming' && !(f.status === 'live' || f.is_live)).slice(0, 2).map(renderSimpleCard)}
+             </div>
+           </div>
+        </div>
+        <div className="lg:col-span-1 space-y-8">
+          <div>
+            <h3 className="text-sm font-bold uppercase tracking-widest text-white mb-4 border-b border-zinc-900 pb-2 flex justify-between items-center">
+              Standings Preview
+              <button onClick={() => setActiveTab('standings')} className="text-[10px] text-amber-500 hover:underline">View All</button>
+            </h3>
+            <div className="border border-zinc-900 bg-zinc-950/50 p-2 overflow-hidden max-h-[300px] relative">
+              <TournamentStandings tournamentId={id!} />
+              <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-zinc-950 to-transparent pointer-events-none" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderFixturesTab = () => (
+    <section className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      {fixtures.length === 0 ? (
+        <div className="text-center py-12 border border-dashed border-zinc-800 bg-zinc-900/20">
+          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+            No fixtures slated
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+          {FIXTURE_STAGES.map((stage) => {
+            const stageFixtures = fixtures.filter(
+              (f) => (f.stage || "round-robin") === stage,
+            );
+            if (stageFixtures.length === 0) return null;
+
+            const upcomingFixtures = stageFixtures.filter(
+              (f) => f.status === "upcoming" && f.status !== "completed" && !(f.status === "live" || f.is_live),
+            );
+            const completedFixtures = stageFixtures.filter(
+              (f) => f.status === "completed",
+            );
+
+            return (
+              <div key={stage} className="space-y-6">
+                <h3 className="text-xs font-black uppercase tracking-widest text-zinc-300 border-b border-zinc-800 pb-2 flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
+                  {stage.replace("-", " ")}
+                </h3>
+                
+                {upcomingFixtures.length > 0 && (
+                  <div className="space-y-4">
+                    <h4 className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Upcoming</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+                       {upcomingFixtures.map(renderSimpleCard)}
+                    </div>
+                  </div>
+                )}
+                
+                {completedFixtures.length > 0 && (
+                  <div className="space-y-4 mt-6">
+                    <h4 className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Completed</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+                       {completedFixtures.map(renderCompletedCard)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+
+  const renderStandingsTab = () => (
+    <section className="w-full max-w-5xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <div className="border border-zinc-800 bg-zinc-950 p-2 md:p-6 shadow-2xl overflow-x-auto">
+        <TournamentStandings tournamentId={id!} />
+      </div>
+    </section>
+  );
+
+  const renderTeamsTab = () => (
+    <section className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+      {rosters.length === 0 ? (
+        <div className="text-center py-16 border border-dashed border-zinc-800 bg-zinc-950/50">
+          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest leading-relaxed">
+            No official rosters registered for this tournament yet.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+          {Object.entries(
+            rosters.reduce((acc: any, r: any) => {
+              const teamId = r.team_id;
+              if (!acc[teamId]) {
+                acc[teamId] = {
+                  teamName: r.teams?.name || "Unknown Team",
+                  players: [],
+                };
+              }
+              acc[teamId].players.push(r);
+              return acc;
+            }, {}),
+          ).map(([teamId, data]: [string, any]) => (
+            <div
+              key={teamId}
+              className="bg-zinc-950 border border-zinc-900 overflow-hidden flex flex-col group hover:border-amber-500/30 transition-colors"
+            >
+              <div className="bg-zinc-900/50 border-b border-zinc-900 px-6 py-4 flex justify-between items-center">
+                <h3 className="text-lg font-black text-white italic truncate pr-4 group-hover:text-amber-500 transition-colors">
+                  {data.teamName}
+                </h3>
+                <span className="text-[9px] font-mono text-amber-500 px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded-sm shrink-0">
+                  {data.players.length} / 12
+                </span>
+              </div>
+              <div className="p-4 flex-1 flex flex-col">
+                <div className="space-y-2">
+                  {data.players
+                    .sort((a: any, b: any) =>
+                      (a.players?.name || "").localeCompare(
+                        b.players?.name || "",
+                      ),
+                    )
+                    .map((r: any, idx: number) => (
+                      <div
+                        key={r.player_id}
+                        className="flex justify-between items-center border-b border-zinc-900/30 pb-2 last:border-0 last:pb-0"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-[9px] font-black text-zinc-600 bg-zinc-900 w-4 h-4 flex items-center justify-center rounded-sm shrink-0">
+                            {idx + 1}
+                          </span>
+                          <span className="text-xs font-bold text-zinc-300 truncate max-w-[140px] sm:max-w-[200px]">
+                            {r.players?.name || "Unknown Player"}
+                          </span>
+                        </div>
+                        <span className="text-[8px] uppercase tracking-widest text-zinc-500 font-bold shrink-0">
+                          {r.players?.role || "Player"}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+
+  const renderLiveTab = () => {
+    const liveFixtures = fixtures.filter(
+      (f) => (f.status === "live" || f.is_live) && f.status !== "completed",
+    );
+    
+    return (
+      <section className="w-full max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+        {liveFixtures.length === 0 ? (
+          <div className="text-center py-16 border border-dashed border-zinc-800 bg-zinc-950/50">
+            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest leading-relaxed">
+              No live matches currently playing in this tournament.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {liveFixtures.map(renderLiveCard)}
+          </div>
+        )}
+      </section>
+    );
+  };
+
+  const renderStatisticsTab = () => {
+    const completedCount = fixtures.filter(f => f.status === 'completed').length;
+    const upcomingCount = fixtures.filter(f => f.status === 'upcoming' && !(f.status === 'live' || f.is_live)).length;
+    const totalCount = fixtures.length;
+    
+    return (
+      <section className="w-full max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300">
+         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+            <div className="bg-zinc-900/50 border border-zinc-800 p-6 flex flex-col items-center justify-center text-center">
+              <span className="text-4xl font-black text-white italic tracking-tighter mb-2">{totalCount}</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Total Matches</span>
+            </div>
+            <div className="bg-zinc-900/50 border border-zinc-800 p-6 flex flex-col items-center justify-center text-center">
+              <span className="text-4xl font-black text-white italic tracking-tighter mb-2">{completedCount}</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Completed</span>
+            </div>
+            <div className="bg-zinc-900/50 border border-zinc-800 p-6 flex flex-col items-center justify-center text-center">
+              <span className="text-4xl font-black text-white italic tracking-tighter mb-2">{upcomingCount}</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Upcoming</span>
+            </div>
+         </div>
+         
+         <div className="text-center py-16 border border-dashed border-zinc-800 bg-zinc-950/50">
+            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest leading-relaxed">
+              Detailed player and tournament statistics are being compiled for future updates.
+            </p>
+         </div>
+      </section>
+    );
+  };
+
   return (
-    <div className="flex flex-col flex-1 pb-20">
+    <div className="flex flex-col flex-1 pb-20 bg-zinc-950">
       <div className="px-6 md:px-10 pt-10 pb-6">
         <Link
           to="/"
@@ -497,202 +743,40 @@ export default function TournamentDetailPage() {
             </div>
           )}
         </section>
+      </div>
 
-        {tournament.phase === "knockout" && (
-          <section className="mb-16 bg-black border border-zinc-900 p-6 md:p-10 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-amber-500/5 blur-[100px] rounded-full pointer-events-none" />
-            <h2 className="text-xl font-black tracking-widest uppercase text-white flex items-center gap-3 mb-10 border-b border-zinc-800 pb-4 relative z-10">
-              <div className="w-2 h-2 bg-amber-500 rotate-45" /> Knockout
-              Bracket
-            </h2>
-            <div className="flex flex-col md:flex-row gap-8 overflow-x-auto pb-4 snap-x relative z-10 w-full min-h-[300px]">
-              {renderBracketColumn("Quarterfinals", ["quarterfinal"])}
-              {renderBracketColumn("Semifinals", ["semifinal"])}
-              {renderBracketColumn("Final", ["final"])}
-            </div>
-          </section>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-8">
-          {/* Section 2: Fixtures (Left Column) */}
-          <section className="lg:col-span-1 space-y-6">
-            <h2 className="text-xl font-bold tracking-tight italic text-white flex items-center gap-2 mb-6">
-              <CalendarDays className="w-5 h-5 text-zinc-500" /> Match Fixtures
-            </h2>
-
-            {fixtures.length === 0 ? (
-              <div className="text-center py-12 border border-dashed border-zinc-800 bg-zinc-900/20">
-                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                  No fixtures slated
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-12">
-                {FIXTURE_STAGES.map((stage) => {
-                  const stageFixtures = fixtures.filter(
-                    (f) => (f.stage || "round-robin") === stage,
-                  );
-                  if (stageFixtures.length === 0) return null;
-
-                  const liveFixtures = stageFixtures.filter(
-                    (f) => (f.status === "live" || f.is_live) && f.status !== "completed",
-                  );
-                  const upcomingFixtures = stageFixtures.filter(
-                    (f) => f.status === "upcoming" && f.status !== "completed" && !(f.status === "live" || f.is_live),
-                  );
-                  const completedFixtures = stageFixtures.filter(
-                    (f) => f.status === "completed",
-                  );
-
-                  const isKnockoutStage = stage !== "round-robin";
-
-                  return (
-                    <div
-                      key={stage}
-                      className={`space-y-6 relative ${isKnockoutStage && tournament.phase === "knockout" ? "bg-zinc-900/10 border border-zinc-800/50 p-4 -mx-4" : ""}`}
-                    >
-                      <h3
-                        className={`text-xs font-black uppercase tracking-widest border-b pb-2 flex items-center gap-2 ${isKnockoutStage && tournament.phase === "knockout" ? "text-amber-500 border-amber-500/20" : "text-zinc-300 border-zinc-800"}`}
-                      >
-                        {isKnockoutStage && tournament.phase === "knockout" ? (
-                          <div className="w-2 h-2 bg-amber-500 rotate-45" />
-                        ) : (
-                          <div className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
-                        )}
-                        {stage.replace("-", " ")}
-                      </h3>
-                      <div className="space-y-8">
-                        {liveFixtures.length > 0 && (
-                          <div>
-                            <h4 className="text-[10px] uppercase tracking-widest text-amber-500 font-bold mb-3 flex items-center gap-2">
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                              Live Matches
-                            </h4>
-                            <div className="space-y-4">
-                              {liveFixtures.map((f) => renderLiveCard(f))}
-                            </div>
-                          </div>
-                        )}
-
-                        {upcomingFixtures.length > 0 && (
-                          <div>
-                            <h4 className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold mb-3">
-                              Upcoming Matches
-                            </h4>
-                            <div className="space-y-4">
-                              {upcomingFixtures.map((f) => renderSimpleCard(f))}
-                            </div>
-                          </div>
-                        )}
-
-                        {completedFixtures.length > 0 && (
-                          <div>
-                            <h4 className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold mb-3">
-                              Completed Matches
-                            </h4>
-                            <div className="space-y-4">
-                              {completedFixtures.map((f) =>
-                                renderCompletedCard(f),
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-
-          {/* Section 3: Standings (Right Column) */}
-          <section className="lg:col-span-2 space-y-6">
-            <h2 className="text-xl font-bold tracking-tight italic text-white flex items-center gap-2 mb-6">
-              <Trophy className="w-5 h-5 text-amber-500" /> Tournament Standings
-            </h2>
-            <div className="border border-zinc-800 bg-zinc-950 p-1 lg:p-6 shadow-2xl">
-              <TournamentStandings tournamentId={id!} />
-            </div>
-          </section>
+      {/* Internal Navigation Tabs */}
+      <div className="flex border-b border-zinc-900 overflow-x-auto no-scrollbar mb-8 sticky top-16 z-40 bg-zinc-950/95 backdrop-blur-md">
+        <div className="flex gap-1 min-w-max px-6 md:px-10">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`py-4 px-4 text-xs font-bold uppercase tracking-widest transition-all whitespace-nowrap outline-none flex items-center gap-2 ${
+                activeTab === tab.id
+                  ? "text-amber-500 border-b-2 border-amber-500 bg-amber-500/5"
+                  : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/50 border-b-2 border-transparent"
+              }`}
+            >
+              {tab.label}
+              {tab.id === 'live' && fixtures.filter(f => (f.status === "live" || f.is_live) && f.status !== "completed").length > 0 && (
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+              )}
+            </button>
+          ))}
         </div>
+      </div>
 
-        {/* Section 4: Official Team Rosters */}
-        <section className="mt-20">
-          <h2 className="text-2xl font-black tracking-tight italic text-white flex items-center gap-3 mb-8 border-b border-zinc-900 pb-4">
-            <div className="w-3 h-3 bg-amber-500 rotate-45" /> Official Team
-            Rosters
-          </h2>
-
-          {rosters.length === 0 ? (
-            <div className="text-center py-16 border border-dashed border-zinc-800 bg-zinc-950/50">
-              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest leading-relaxed">
-                No official rosters registered for this tournament yet.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-              {Object.entries(
-                rosters.reduce((acc: any, r: any) => {
-                  const teamId = r.team_id;
-                  if (!acc[teamId]) {
-                    acc[teamId] = {
-                      teamName: r.teams?.name || "Unknown Team",
-                      players: [],
-                    };
-                  }
-                  acc[teamId].players.push(r);
-                  return acc;
-                }, {}),
-              ).map(([teamId, data]: [string, any]) => (
-                <div
-                  key={teamId}
-                  className="bg-zinc-950 border border-zinc-900 overflow-hidden flex flex-col group hover:border-amber-500/30 transition-colors"
-                >
-                  <div className="bg-zinc-900/50 border-b border-zinc-900 px-6 py-4 flex justify-between items-center">
-                    <h3 className="text-lg font-black text-white italic truncate pr-4 group-hover:text-amber-500 transition-colors">
-                      {data.teamName}
-                    </h3>
-                    <span className="text-[10px] font-mono text-amber-500 px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded-sm shrink-0">
-                      {data.players.length} / 12
-                    </span>
-                  </div>
-                  <div className="p-6 flex-1 flex flex-col">
-                    <div className="space-y-3">
-                      {data.players
-                        .sort((a: any, b: any) =>
-                          (a.players?.name || "").localeCompare(
-                            b.players?.name || "",
-                          ),
-                        )
-                        .map((r: any, idx: number) => (
-                          <div
-                            key={r.player_id}
-                            className="flex justify-between items-center border-b border-zinc-900/50 pb-3 last:border-0 last:pb-0"
-                          >
-                            <div className="flex items-center gap-3">
-                              <span className="text-[10px] font-black text-zinc-600 bg-zinc-900 w-5 h-5 flex items-center justify-center rounded-sm">
-                                {idx + 1}
-                              </span>
-                              <Link
-                                to={`/players/${r.player_id}`}
-                                className="text-sm font-bold text-zinc-300 hover:text-white transition-colors truncate max-w-[140px] sm:max-w-[200px]"
-                              >
-                                {r.players?.name || "Unknown Player"}
-                              </Link>
-                            </div>
-                            <span className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold shrink-0">
-                              {r.players?.role || "Player"}
-                            </span>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+      <div className="px-6 md:px-10">
+        {/* Tab Content Rendering */}
+        {activeTab === "overview" && renderOverviewTab()}
+        {activeTab === "fixtures" && renderFixturesTab()}
+        {activeTab === "standings" && renderStandingsTab()}
+        {activeTab === "teams" && renderTeamsTab()}
+        {activeTab === "live" && renderLiveTab()}
+        {activeTab === "statistics" && renderStatisticsTab()}
       </div>
     </div>
   );
 }
+
