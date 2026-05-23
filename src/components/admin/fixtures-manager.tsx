@@ -320,7 +320,7 @@ export function FixturesManager({
       resultMessage,
     };
 
-    const submissionData = {
+    const submissionData: any = {
       tournament_id: parseDbId(formData.tournament_id),
       team1_id: parseDbId(formData.team1_id),
       team2_id: parseDbId(formData.team2_id),
@@ -334,6 +334,11 @@ export function FixturesManager({
       best_of: formData.best_of,
       score: scoreData,
     };
+
+    if (formData.status === "completed") {
+      submissionData.is_live = false;
+      submissionData.live_state = null;
+    }
 
     try {
       if (editingId) {

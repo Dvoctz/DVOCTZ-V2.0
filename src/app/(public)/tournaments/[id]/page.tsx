@@ -66,10 +66,13 @@ export default function TournamentDetailPage() {
         if (tRes.error) throw tRes.error;
         setTournament(tRes.data);
         if (!fRes.error && fRes.data) {
-          const processedFixtures = fRes.data.map(f => ({
-             ...f,
-             score: f.is_live && f.live_state ? f.live_state : f.score
-          }));
+          const processedFixtures = fRes.data.map((f: any) => {
+             const isLive = (f.status === "live" || f.is_live) && f.status !== "completed";
+             return {
+               ...f,
+               score: isLive && f.live_state ? f.live_state : f.score
+             };
+          });
           setFixtures(processedFixtures);
         }
         if (!rRes.error && rRes.data) {
@@ -340,8 +343,8 @@ export default function TournamentDetailPage() {
   const renderBracketCard = (f: Fixture) => {
     const t1Winner = f.winner?.name && f.winner.name === f.team1?.name;
     const t2Winner = f.winner?.name && f.winner.name === f.team2?.name;
-    const isLive = f.status === "live" || f.is_live;
-    const isUpcoming = f.status === "upcoming" && !f.is_live;
+    const isLive = (f.status === "live" || f.is_live) && f.status !== "completed";
+    const isUpcoming = f.status === "upcoming" && !isLive;
 
     return (
       <div
@@ -587,10 +590,10 @@ export default function TournamentDetailPage() {
                   if (stageFixtures.length === 0) return null;
 
                   const liveFixtures = stageFixtures.filter(
-                    (f) => f.status === "live" || f.is_live,
+                    (f) => (f.status === "live" || f.is_live) && f.status !== "completed",
                   );
                   const upcomingFixtures = stageFixtures.filter(
-                    (f) => f.status === "upcoming" && !f.is_live,
+                    (f) => f.status === "upcoming" && f.status !== "completed" && !(f.status === "live" || f.is_live),
                   );
                   const completedFixtures = stageFixtures.filter(
                     (f) => f.status === "completed",
