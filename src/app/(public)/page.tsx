@@ -138,88 +138,75 @@ export default function HomePage() {
 
         if (!fixtures || fixtures.length === 0) return null;
 
-        if (tournament.phase === "knockout") {
-          const finalMatch = fixtures.find((f) => f.stage === "final");
-          if (finalMatch && finalMatch.winner) {
-            return {
-              teamName: finalMatch.winner.name,
-              tournamentName: tournament.name,
-              tournamentId: tournament.id,
-            };
-          }
-          // Fallback if no specific 'final' stage found, try last match
-          const lastMatch = fixtures.sort(
-            (a, b) =>
-              new Date(b.date_time).getTime() - new Date(a.date_time).getTime(),
-          )[0];
-          if (lastMatch && lastMatch.winner) {
-            return {
-              teamName: lastMatch.winner.name,
-              tournamentName: tournament.name,
-              tournamentId: tournament.id,
-            };
-          }
-        } else {
-          // Round Robin Standings calculation inline
-          const table = new Map<
-            number,
-            { name: string; points: number; diff: number }
-          >();
-          fixtures.forEach((f) => {
-            if (!table.has(f.team1_id) && f.team1_id)
-              table.set(f.team1_id, {
-                name: f.team1?.name || "Unknown",
-                points: 0,
-                diff: 0,
-              });
-            if (!table.has(f.team2_id) && f.team2_id)
-              table.set(f.team2_id, {
-                name: f.team2?.name || "Unknown",
-                points: 0,
-                diff: 0,
-              });
-
-            const t1 = table.get(f.team1_id);
-            const t2 = table.get(f.team2_id);
-            if (!t1 || !t2) return;
-
-            let t1Scored = 0,
-              t1Conceded = 0;
-            if (f.score?.sets) {
-              f.score.sets.forEach((set: any) => {
-                t1Scored += Number(set.team1Points || 0);
-                t1Conceded += Number(set.team2Points || 0);
-              });
-            }
-            t1.diff += t1Scored - t1Conceded;
-            t2.diff += t1Conceded - t1Scored;
-
-            const s1 = f.score?.team1Score || 0;
-            const s2 = f.score?.team2Score || 0;
-
-            if (f.winner_team_id === f.team1_id || s1 > s2) {
-              t1.points += 2;
-            } else if (f.winner_team_id === f.team2_id || s2 > s1) {
-              t2.points += 2;
-            } else {
-              t1.points += 1;
-              t2.points += 1;
-            }
-          });
-
-          const standings = Array.from(table.values()).sort((a, b) => {
-            if (b.points !== a.points) return b.points - a.points;
-            return b.diff - a.diff;
-          });
-
-          if (standings.length > 0) {
-            return {
-              teamName: standings[0].name,
-              tournamentName: tournament.name,
-              tournamentId: tournament.id,
-            };
-          }
+        const finalMatch = fixtures.find((f) => f.stage?.toLowerCase() === "final");
+        if (finalMatch && finalMatch.winner) {
+          return {
+            teamName: finalMatch.winner.name,
+            tournamentName: tournament.name,
+            tournamentId: tournament.id,
+          };
         }
+
+        // Round Robin Standings fallback
+        const table = new Map<
+          number,
+          { name: string; points: number; diff: number }
+        >();
+        fixtures.forEach((f) => {
+          if (!table.has(f.team1_id) && f.team1_id)
+            table.set(f.team1_id, {
+              name: f.team1?.name || "Unknown",
+              points: 0,
+              diff: 0,
+            });
+          if (!table.has(f.team2_id) && f.team2_id)
+            table.set(f.team2_id, {
+              name: f.team2?.name || "Unknown",
+              points: 0,
+              diff: 0,
+            });
+
+          const t1 = table.get(f.team1_id);
+          const t2 = table.get(f.team2_id);
+          if (!t1 || !t2) return;
+
+          let t1Scored = 0,
+            t1Conceded = 0;
+          if (f.score?.sets) {
+            f.score.sets.forEach((set: any) => {
+              t1Scored += Number(set.team1Points || 0);
+              t1Conceded += Number(set.team2Points || 0);
+            });
+          }
+          t1.diff += t1Scored - t1Conceded;
+          t2.diff += t1Conceded - t1Scored;
+
+          const s1 = f.score?.team1Score || 0;
+          const s2 = f.score?.team2Score || 0;
+
+          if (f.winner_team_id === f.team1_id || s1 > s2) {
+            t1.points += 2;
+          } else if (f.winner_team_id === f.team2_id || s2 > s1) {
+            t2.points += 2;
+          } else {
+            t1.points += 1;
+            t2.points += 1;
+          }
+        });
+
+        const standings = Array.from(table.values()).sort((a, b) => {
+          if (b.points !== a.points) return b.points - a.points;
+          return b.diff - a.diff;
+        });
+
+        if (standings.length > 0) {
+          return {
+            teamName: standings[0].name,
+            tournamentName: tournament.name,
+            tournamentId: tournament.id,
+          };
+        }
+        
         return null;
       };
 

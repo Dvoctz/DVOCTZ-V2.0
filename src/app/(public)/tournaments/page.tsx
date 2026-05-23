@@ -65,7 +65,7 @@ export default function TournamentsArchivePage() {
           supabase
             .from("fixtures")
             .select(
-              "team1_id, team2_id, winner_team_id, tournament_id, stage, teams!winner_team_id(id, name)",
+              "team1_id, team2_id, winner_team_id, tournament_id, stage, status, score, winner:teams!winner_team_id(id, name), team1:teams!team1_id(name), team2:teams!team2_id(name)",
             ),
         ]);
 
@@ -119,8 +119,8 @@ export default function TournamentsArchivePage() {
               statsMap[f.winner_team_id].matchesWon += 1;
 
               // Update name robustly
-              if (f.teams?.name) {
-                statsMap[f.winner_team_id].name = f.teams.name;
+              if (f.winner?.name) {
+                statsMap[f.winner_team_id].name = f.winner.name;
               }
 
               if (f.stage?.toLowerCase() === "final") {
@@ -138,15 +138,79 @@ export default function TournamentsArchivePage() {
 
           // Map latest champions per tournament
           const tournamentChampions: Record<number, string> = {};
+          
+          // First pass: find explicit final winners
           allFixtures.forEach((f: any) => {
             if (
               f.stage?.toLowerCase() === "final" &&
+              f.status === "completed" &&
               f.winner_team_id &&
               f.tournament_id
             ) {
-              tournamentChampions[f.tournament_id] = f.teams?.name;
+              tournamentChampions[f.tournament_id] = f.winner?.name;
             }
           });
+
+          // Second pass: fallback to standings leader for completed tournaments without a final
+          const fixturesByTourney = allFixtures.reduce((acc: any, f: any) => {
+            if (!acc[f.tournament_id]) acc[f.tournament_id] = [];
+            acc[f.tournament_id].push(f);
+            return acc;
+          }, {});
+
+          Object.keys(fixturesByTourney).forEach((tIdStr) => {
+            const tId = parseInt(tIdStr);
+            if (tournamentChampions[tId]) return; // already has a champion
+
+            const tFixtures = fixturesByTourney[tIdStr];
+            
+            // Calculate standings
+            const table = new Map<number, { name: string; points: number; diff: number }>();
+            tFixtures.forEach((f: any) => {
+              if (f.status !== "completed") return;
+
+              if (!table.has(f.team1_id) && f.team1_id)
+                table.set(f.team1_id, { name: f.team1?.name || "Unknown", points: 0, diff: 0 });
+              if (!table.has(f.team2_id) && f.team2_id)
+                table.set(f.team2_id, { name: f.team2?.name || "Unknown", points: 0, diff: 0 });
+
+              const t1 = table.get(f.team1_id);
+              const t2 = table.get(f.team2_id);
+              if (!t1 || !t2) return;
+
+              let t1Scored = 0, t1Conceded = 0;
+              if (f.score?.sets) {
+                f.score.sets.forEach((set: any) => {
+                  t1Scored += Number(set.team1Points || 0);
+                  t1Conceded += Number(set.team2Points || 0);
+                });
+              }
+              t1.diff += t1Scored - t1Conceded;
+              t2.diff += t1Conceded - t1Scored;
+
+              const s1 = f.score?.team1Score || 0;
+              const s2 = f.score?.team2Score || 0;
+
+              if (f.winner_team_id === f.team1_id || s1 > s2) {
+                t1.points += 2;
+              } else if (f.winner_team_id === f.team2_id || s2 > s1) {
+                t2.points += 2;
+              } else {
+                t1.points += 1;
+                t2.points += 1;
+              }
+            });
+
+            const standings = Array.from(table.values()).sort((a, b) => {
+              if (b.points !== a.points) return b.points - a.points;
+              return b.diff - a.diff;
+            });
+
+            if (standings.length > 0 && standings[0].points > 0) {
+              tournamentChampions[tId] = standings[0].name;
+            }
+          });
+
           setTournaments((prev) =>
             prev.map((t) => ({
               ...t,
