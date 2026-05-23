@@ -142,6 +142,7 @@ export default function HomePage() {
         if (finalMatch && finalMatch.winner) {
           return {
             teamName: finalMatch.winner.name,
+            teamId: finalMatch.winner_team_id,
             tournamentName: tournament.name,
             tournamentId: tournament.id,
           };
@@ -150,17 +151,19 @@ export default function HomePage() {
         // Round Robin Standings fallback
         const table = new Map<
           number,
-          { name: string; points: number; diff: number }
+          { id: number; name: string; points: number; diff: number }
         >();
         fixtures.forEach((f) => {
           if (!table.has(f.team1_id) && f.team1_id)
             table.set(f.team1_id, {
+              id: f.team1_id,
               name: f.team1?.name || "Unknown",
               points: 0,
               diff: 0,
             });
           if (!table.has(f.team2_id) && f.team2_id)
             table.set(f.team2_id, {
+              id: f.team2_id,
               name: f.team2?.name || "Unknown",
               points: 0,
               diff: 0,
@@ -202,6 +205,7 @@ export default function HomePage() {
         if (standings.length > 0) {
           return {
             teamName: standings[0].name,
+            teamId: standings[0].id,
             tournamentName: tournament.name,
             tournamentId: tournament.id,
           };
@@ -420,49 +424,53 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto relative z-10">
             {div1Champion && (
               <div className="bg-zinc-950/80 border border-amber-500/30 p-8 text-center relative group overflow-hidden hover:border-amber-500 transition-colors">
-                <div className="absolute inset-0 bg-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                <p className="text-[10px] uppercase tracking-[0.3em] text-amber-500 font-bold mb-2">
+                <div className="absolute inset-0 bg-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                <p className="text-[10px] uppercase tracking-[0.3em] text-amber-500 font-bold mb-2 relative z-10">
                   Division 1 Current Champions
                 </p>
-                <h3 className="text-3xl md:text-4xl font-black italic text-white mb-4 drop-shadow-sm">
+                <h3 className="text-3xl md:text-4xl font-black italic text-white mb-4 drop-shadow-sm relative z-10">
                   {div1Champion.teamName}
                 </h3>
-                <p className="text-xs text-zinc-400 mb-6 font-medium">
+                <p className="text-xs text-zinc-400 mb-6 font-medium relative z-10">
                   {div1Champion.tournamentName}
                 </p>
-                <Link to={`/tournaments/${div1Champion.tournamentId}`}>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-amber-500/50 text-amber-500 hover:bg-amber-500 hover:text-black uppercase tracking-widest text-[10px] font-bold"
-                  >
-                    View Path to Victory
-                  </Button>
-                </Link>
+                <div className="relative z-10">
+                  <Link to={div1Champion.teamId ? `/team/${div1Champion.teamId}` : `/tournaments/${div1Champion.tournamentId}`}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-amber-500/50 text-amber-500 hover:bg-amber-500 hover:text-black uppercase tracking-widest text-[10px] font-bold"
+                    >
+                      View Path to Victory
+                    </Button>
+                  </Link>
+                </div>
               </div>
             )}
 
             {div2Champion && (
               <div className="bg-zinc-950/80 border border-amber-500/30 p-8 text-center relative group overflow-hidden hover:border-amber-500 transition-colors">
-                <div className="absolute inset-0 bg-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                <p className="text-[10px] uppercase tracking-[0.3em] text-amber-500 font-bold mb-2">
+                <div className="absolute inset-0 bg-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                <p className="text-[10px] uppercase tracking-[0.3em] text-amber-500 font-bold mb-2 relative z-10">
                   Division 2 Current Champions
                 </p>
-                <h3 className="text-3xl md:text-4xl font-black italic text-white mb-4 drop-shadow-sm">
+                <h3 className="text-3xl md:text-4xl font-black italic text-white mb-4 drop-shadow-sm relative z-10">
                   {div2Champion.teamName}
                 </h3>
-                <p className="text-xs text-zinc-400 mb-6 font-medium">
+                <p className="text-xs text-zinc-400 mb-6 font-medium relative z-10">
                   {div2Champion.tournamentName}
                 </p>
-                <Link to={`/tournaments/${div2Champion.tournamentId}`}>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-amber-500/50 text-amber-500 hover:bg-amber-500 hover:text-black uppercase tracking-widest text-[10px] font-bold"
-                  >
-                    View Path to Victory
-                  </Button>
-                </Link>
+                <div className="relative z-10">
+                  <Link to={div2Champion.teamId ? `/team/${div2Champion.teamId}` : `/tournaments/${div2Champion.tournamentId}`}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-amber-500/50 text-amber-500 hover:bg-amber-500 hover:text-black uppercase tracking-widest text-[10px] font-bold"
+                    >
+                      View Path to Victory
+                    </Button>
+                  </Link>
+                </div>
               </div>
             )}
           </div>

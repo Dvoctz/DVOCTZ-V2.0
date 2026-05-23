@@ -34,6 +34,7 @@ export default function ClubDeepDivePage() {
   const [club, setClub] = useState<Club | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [fixtures, setFixtures] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<"overview" | "teams" | "players" | "statistics">("overview");
   const [loading, setLoading] = useState(true);
 
@@ -56,13 +57,24 @@ export default function ClubDeepDivePage() {
             ? `club_id.eq.${id},team_id.in.(${teamIds.join(",")})`
             : `club_id.eq.${id}`;
             
-          const { data: playersRes } = await supabase
+          const playersPromise = supabase
             .from("players")
             .select("*, teams(name, division)")
             .or(orFilter)
             .order("name");
-            
-          if (playersRes) setPlayers(playersRes);
+
+          const fixturesPromise = teamIds.length > 0 
+            ? supabase
+                .from("fixtures")
+                .select("*")
+                .or(`team1_id.in.(${teamIds.join(",")}),team2_id.in.(${teamIds.join(",")})`)
+                .order("date_time", { ascending: false })
+            : Promise.resolve({ data: [] });
+
+          const [playersRes, fixturesRes] = await Promise.all([playersPromise, fixturesPromise]);
+
+          if (playersRes.data) setPlayers(playersRes.data);
+          if (fixturesRes.data) setFixtures(fixturesRes.data);
         }
       } catch (err) {
         console.error("Failed to load club data:", err);
@@ -183,13 +195,214 @@ export default function ClubDeepDivePage() {
     </div>
   );
 
-  const renderStatistics = () => (
-    <div className="text-center py-16 border border-zinc-900 bg-zinc-950/50 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      <BarChart2 className="w-8 h-8 text-zinc-700 mx-auto mb-4" />
-      <span className="text-xl font-black italic text-zinc-600 uppercase tracking-tighter mb-2 block">Club Analytics</span>
-      <p className="text-[10px] uppercase font-bold tracking-widest text-amber-500">Feature Coming Soon</p>
-    </div>
-  );
+  const renderStatistics = () => {
+    const teamIds = teams.map(t => t.id);
+    const validFixtures = fixtures.filter(f => f.status === "completed" && (teamIds.includes(f.team1_id) || teamIds.includes(f.team2_id)));
+    
+    let totalWins = 0;
+    let totalMatches = 0;
+    let totalLosses = 0;
+    let totalDraws = 0;
+
+    let finalsReached = 0;
+    let tournamentsWon = 0;
+    let tournamentsEntered = new Set(validFixtures.map(f => f.tournament_id)).size;
+
+    const teamStats: any[] = teams.map(t => ({ id: t.id, name: t.name, division: t.division, matches: 0, wins: 0, losses: 0, draws: 0 }));
+
+    const recentForm: string[] = [];
+
+    const sortedFixtures = [...validFixtures].sort((a, b) => new Date(b.date_time).getTime() - new Date(a.date_time).getTime());
+
+    // Fix for duplicate final checks
+    const checkedFinals = new Set<number>();
+
+    sortedFixtures.forEach(f => {
+      const isTeam1 = teamIds.includes(f.team1_id);
+      const isTeam2 = teamIds.includes(f.team2_id);
+
+      const s1 = typeof f.score?.team1Score === "number" ? f.score.team1Score : 0;
+      const s2 = typeof f.score?.team2Score === "number" ? f.score.team2Score : 0;
+
+      let winnerId = f.winner_team_id;
+      if (!winnerId) {
+        if (s1 > s2) winnerId = f.team1_id;
+        else if (s2 > s1) winnerId = f.team2_id;
+      }
+
+      let clubWon = false;
+      let clubLost = false;
+      let clubDraw = false;
+
+      if (isTeam1) {
+        const stats = teamStats.find(t => t.id === f.team1_id);
+        if (stats) {
+          stats.matches++;
+          totalMatches++;
+          if (winnerId === f.team1_id) { stats.wins++; totalWins++; clubWon = true; }
+          else if (winnerId === f.team2_id) { stats.losses++; totalLosses++; clubLost = true; }
+          else { stats.draws++; totalDraws++; clubDraw = true; }
+        }
+      }
+
+      if (isTeam2) {
+        const stats = teamStats.find(t => t.id === f.team2_id);
+        if (stats) {
+          stats.matches++;
+          totalMatches++;
+          if (winnerId === f.team2_id) { stats.wins++; totalWins++; clubWon = true; }
+          else if (winnerId === f.team1_id) { stats.losses++; totalLosses++; clubLost = true; }
+          else { stats.draws++; totalDraws++; clubDraw = true; }
+        }
+      }
+      
+      // Prevent intra-club form duplication
+      if (clubWon) recentForm.push("W");
+      else if (clubLost && !clubWon) recentForm.push("L");
+      else if (clubDraw && !clubWon && !clubLost) recentForm.push("D"); 
+
+      if (f.stage?.toLowerCase() === "final" && !checkedFinals.has(f.id)) {
+        checkedFinals.add(f.id);
+        if (isTeam1 || isTeam2) finalsReached++;
+        if (winnerId && teamIds.includes(winnerId)) tournamentsWon++;
+      }
+    });
+
+    const winRate = totalMatches > 0 ? Math.round((totalWins / totalMatches) * 100) : 0;
+
+    const liveFixtures = fixtures.filter(f => (f.status === "live" || f.is_live) && f.status !== "completed");
+    
+    const latestForm = recentForm.slice(0, 5).reverse();
+
+    return (
+      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300 relative z-10 w-full">
+        {/* Top KPIs */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-zinc-950 border border-zinc-900 p-6 flex flex-col items-center justify-center relative overflow-hidden group hover:border-amber-500/30 transition-colors">
+             <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+               <Activity className="w-8 h-8 text-white" />
+             </div>
+             <span className="text-[10px] uppercase font-bold tracking-widest text-zinc-500 mb-2 relative z-10">Matches</span>
+             <span className="text-4xl font-black text-white relative z-10">{totalMatches}</span>
+          </div>
+          <div className="bg-zinc-950 border border-zinc-900 p-6 flex flex-col items-center justify-center relative overflow-hidden group hover:border-amber-500/30 transition-colors">
+             <span className="text-[10px] uppercase font-bold tracking-widest text-zinc-500 mb-2 relative z-10">Wins</span>
+             <span className="text-4xl font-black text-amber-500 relative z-10">{totalWins}</span>
+          </div>
+          <div className="bg-zinc-950 border border-zinc-900 p-6 flex flex-col items-center justify-center relative overflow-hidden group hover:border-amber-500/30 transition-colors">
+             <span className="text-[10px] uppercase font-bold tracking-widest text-zinc-500 mb-2 relative z-10">Losses</span>
+             <span className="text-4xl font-black text-white relative z-10">{totalLosses}</span>
+          </div>
+          <div className="bg-zinc-950 border border-amber-500/30 p-6 flex flex-col items-center justify-center relative overflow-hidden shadow-[0_0_15px_rgba(245,158,11,0.05)]">
+             <span className="text-[10px] uppercase font-bold tracking-widest text-amber-500 mb-2 relative z-10">Win Rate</span>
+             <span className="text-4xl font-black text-amber-500 relative z-10">{winRate}%</span>
+          </div>
+        </div>
+
+        {/* Secondary KPI Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Tournament Overview */}
+          <div className="col-span-1 md:col-span-2 bg-zinc-950 border border-zinc-900 p-6 relative overflow-hidden">
+            <h3 className="text-xs uppercase tracking-widest text-zinc-500 font-bold mb-6">Tournament Record</h3>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <span className="block text-2xl md:text-3xl font-black text-white">{tournamentsEntered}</span>
+                <span className="block text-[9px] md:text-[10px] uppercase font-bold tracking-widest text-zinc-600 mt-1">Entered</span>
+              </div>
+               <div>
+                <span className="block text-2xl md:text-3xl font-black text-white">{finalsReached}</span>
+                <span className="block text-[9px] md:text-[10px] uppercase font-bold tracking-widest text-zinc-600 mt-1">Finals</span>
+              </div>
+               <div>
+                <span className="block text-2xl md:text-3xl font-black text-amber-500">{tournamentsWon}</span>
+                <span className="block text-[9px] md:text-[10px] uppercase font-bold tracking-widest text-amber-500 mt-1">Titles</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Status & Form */}
+          <div className="bg-zinc-950 border border-zinc-900 p-6 flex flex-col justify-between">
+            <div>
+              <h3 className="text-xs uppercase tracking-widest text-zinc-500 font-bold mb-4">Live Status</h3>
+              <div className="flex items-center gap-3">
+                 {liveFixtures.length > 0 ? (
+                   <>
+                     <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />
+                     <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest">{liveFixtures.length} Active Match{(liveFixtures.length > 1 ? "es" : "")}</span>
+                   </>
+                 ) : (
+                   <>
+                     <div className="w-2.5 h-2.5 rounded-full bg-zinc-700 shrink-0" />
+                     <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">No Active Matches</span>
+                   </>
+                 )}
+              </div>
+            </div>
+            
+            <div className="mt-6 md:mt-0 pt-6 border-t border-zinc-900">
+              <h3 className="text-xs uppercase tracking-widest text-zinc-500 font-bold mb-3">Recent Form</h3>
+              <div className="flex items-center gap-2">
+                {latestForm.length > 0 ? latestForm.map((result, i) => (
+                  <div key={i} className={`w-6 h-6 flex items-center justify-center text-[10px] font-black rounded-sm ${result === 'W' ? 'bg-amber-500 text-black' : result === 'L' ? 'bg-red-500/20 text-red-500 border border-red-500/30' : 'bg-zinc-800 text-zinc-400'}`}>
+                    {result}
+                  </div>
+                )) : (
+                  <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">No Matches</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Team Breakdown */}
+        <div className="bg-zinc-950 border border-zinc-900 overflow-hidden w-full">
+           <div className="p-4 border-b border-zinc-900 bg-zinc-950/50">
+             <h3 className="text-xs uppercase tracking-widest text-zinc-400 font-bold">Team Breakdown</h3>
+           </div>
+           <div className="overflow-x-auto w-full">
+             <table className="w-full text-left border-collapse min-w-[600px]">
+               <thead>
+                 <tr className="bg-zinc-900/20 border-b border-zinc-900">
+                   <th className="p-4 text-[10px] uppercase font-bold tracking-widest text-zinc-500">Team</th>
+                   <th className="p-4 text-[10px] uppercase font-bold tracking-widest text-zinc-500 text-center">Played</th>
+                   <th className="p-4 text-[10px] uppercase font-bold tracking-widest text-zinc-500 text-center">W</th>
+                   <th className="p-4 text-[10px] uppercase font-bold tracking-widest text-zinc-500 text-center">D</th>
+                   <th className="p-4 text-[10px] uppercase font-bold tracking-widest text-zinc-500 text-center">L</th>
+                   <th className="p-4 text-[10px] uppercase font-bold tracking-widest text-zinc-500 text-right">Win Rate</th>
+                 </tr>
+               </thead>
+               <tbody>
+                 {teamStats.sort((a,b) => b.matches - a.matches).map(t => {
+                   const trRate = t.matches > 0 ? Math.round((t.wins / t.matches) * 100) : 0;
+                   return (
+                     <tr key={t.id} className="border-b border-zinc-900/50 hover:bg-zinc-900/20 transition-colors">
+                       <td className="p-4">
+                         <div className="flex flex-col">
+                           <span className="text-sm font-bold text-white truncate">{t.name}</span>
+                           <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">{t.division}</span>
+                         </div>
+                       </td>
+                       <td className="p-4 text-center text-sm text-zinc-400 font-medium">{t.matches}</td>
+                       <td className="p-4 text-center text-sm text-white font-bold">{t.wins}</td>
+                       <td className="p-4 text-center text-sm text-zinc-500 font-medium">{t.draws}</td>
+                       <td className="p-4 text-center text-sm text-zinc-400 font-medium">{t.losses}</td>
+                       <td className="p-4 text-right text-sm font-black text-amber-500">{trRate}%</td>
+                     </tr>
+                   )
+                 })}
+                 {teamStats.length === 0 && (
+                   <tr>
+                     <td colSpan={6} className="p-8 text-center text-[10px] uppercase tracking-widest font-bold text-zinc-600">No Teams Found</td>
+                   </tr>
+                 )}
+               </tbody>
+             </table>
+           </div>
+        </div>
+
+      </div>
+    );
+  };
 
   return (
     <div className="flex-1 flex flex-col pt-20 pb-20 p-6 md:p-10 max-w-7xl mx-auto w-full">
