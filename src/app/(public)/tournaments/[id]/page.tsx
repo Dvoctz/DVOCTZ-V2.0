@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase/client";
 import { LiveTimer } from "@/components/ui/live-timer";
+import { SetScoreHistory } from "@/components/ui/set-score-history";
 import { Trophy, CalendarDays, ChevronLeft, ArrowLeft } from "lucide-react";
 import { TournamentStandings } from "@/components/standings/tournament-standings";
 
@@ -91,9 +92,10 @@ export default function TournamentDetailPage() {
   const FIXTURE_STAGES = ["round-robin", "quarterfinal", "semifinal", "final"];
 
   const renderSimpleCard = (f: Fixture) => (
-    <div
+    <Link
+      to={`/matches/${f.id}`}
       key={f.id}
-      className="p-4 border border-zinc-900 bg-zinc-950 hover:border-zinc-800 transition-colors"
+      className="block p-4 border border-zinc-900 bg-zinc-950 hover:border-zinc-800 transition-colors"
     >
       <div className="flex justify-between items-start mb-3">
         <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-sm bg-zinc-900 text-zinc-500 border border-zinc-800">
@@ -134,13 +136,14 @@ export default function TournamentDetailPage() {
           </span>
         </div>
       )}
-    </div>
+    </Link>
   );
 
   const renderLiveCard = (f: Fixture) => (
-    <div
+    <Link
+      to={`/matches/${f.id}`}
       key={f.id}
-      className="p-5 border-2 border-amber-500/50 bg-black hover:bg-zinc-950 transition-colors relative overflow-hidden shadow-[0_0_15px_rgba(245,158,11,0.1)]"
+      className="block p-5 border-2 border-amber-500/50 bg-black hover:bg-zinc-950 transition-colors relative overflow-hidden shadow-[0_0_15px_rgba(245,158,11,0.1)]"
     >
       <div className="absolute top-0 right-0 w-40 h-40 bg-amber-500/10 blur-3xl rounded-full" />
       <div className="flex justify-between items-start mb-6 relative z-10">
@@ -177,7 +180,7 @@ export default function TournamentDetailPage() {
             {f.team1?.name || "TBD"}
           </span>
           <span className="text-3xl font-black text-amber-500 shrink-0 tabular-nums leading-none">
-            {f.score?.team1Score ?? "-"}
+            {f.score?.sets ? (f.score.sets[f.score.activeSet ?? 0]?.team1Points ?? f.score.team1Score ?? 0) : (f.score?.team1Score ?? "-")}
           </span>
         </div>
         <div className="w-full h-px bg-zinc-900 my-1" />
@@ -187,48 +190,18 @@ export default function TournamentDetailPage() {
             {f.team2?.name || "TBD"}
           </span>
           <span className="text-3xl font-black text-amber-500 shrink-0 tabular-nums leading-none">
-            {f.score?.team2Score ?? "-"}
+            {f.score?.sets ? (f.score.sets[f.score.activeSet ?? 0]?.team2Points ?? f.score.team2Score ?? 0) : (f.score?.team2Score ?? "-")}
           </span>
         </div>
       </div>
 
-      {f.score?.sets && f.score.sets.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2 relative z-10">
-          {f.score.sets.map((set: any, idx: number) => (
-            <div
-              key={idx}
-              className={`flex flex-col items-center px-4 py-2 rounded-sm border ${f.score?.activeSet === idx ? 'bg-amber-500/10 border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.2)]' : 'bg-zinc-900/80 border-zinc-800'}`}
-            >
-              <span className={`text-[9px] uppercase font-black tracking-widest mb-1.5 ${f.score?.activeSet === idx ? 'text-amber-500' : 'text-zinc-500'}`}>
-                Set {idx + 1}
-              </span>
-              <span
-                className={`text-sm font-bold leading-none ${
-                  (set.winnerOverrideId &&
-                    set.winnerOverrideId === f.team1_id?.toString()) ||
-                  (!set.winnerOverrideId && set.team1Points > set.team2Points)
-                    ? "text-white"
-                    : "text-zinc-400"
-                }`}
-              >
-                {set.team1Points}
-              </span>
-              <div className={`w-full h-px my-1.5 ${f.score?.activeSet === idx ? 'bg-amber-500/30' : 'bg-zinc-800'}`} />
-              <span
-                className={`text-sm font-bold leading-none ${
-                  (set.winnerOverrideId &&
-                    set.winnerOverrideId === f.team2_id?.toString()) ||
-                  (!set.winnerOverrideId && set.team2Points > set.team1Points)
-                    ? "text-white"
-                    : "text-zinc-400"
-                }`}
-              >
-                {set.team2Points}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
+      <SetScoreHistory 
+        sets={f.score?.sets} 
+        activeSet={f.score?.activeSet} 
+        team1Id={f.team1_id} 
+        team2Id={f.team2_id}
+        className="mt-4 relative z-10" 
+      />
 
       {f.referee && (
         <div className="mt-5 pt-4 border-t border-zinc-900 relative z-10 flex justify-end">
@@ -237,7 +210,7 @@ export default function TournamentDetailPage() {
           </span>
         </div>
       )}
-    </div>
+    </Link>
   );
 
   const renderCompletedCard = (f: Fixture) => {
@@ -245,9 +218,10 @@ export default function TournamentDetailPage() {
     const t2Winner = f.winner?.name && f.winner.name === f.team2?.name;
 
     return (
-      <div
+      <Link
+        to={`/matches/${f.id}`}
         key={f.id}
-        className={`p-4 border transition-colors relative overflow-hidden ${f.winner ? "border-amber-500/20 bg-zinc-950" : "border-zinc-900 bg-zinc-950 hover:border-zinc-800"}`}
+        className={`block p-4 border transition-colors relative overflow-hidden ${f.winner ? "border-amber-500/20 bg-zinc-950 hover:border-amber-500/40" : "border-zinc-900 bg-zinc-950 hover:border-zinc-800"}`}
       >
         <div className="flex justify-between items-start mb-3">
           <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-sm bg-zinc-800 text-white">
@@ -288,43 +262,13 @@ export default function TournamentDetailPage() {
           </div>
         </div>
 
-        {f.score?.sets && f.score.sets.length > 0 && (
-          <div className="mt-4 mb-2 flex flex-wrap gap-2">
-            {f.score.sets.map((set, idx) => (
-              <div
-                key={idx}
-                className="flex flex-col items-center bg-zinc-900 px-2.5 py-1.5 rounded-sm border border-zinc-800"
-              >
-                <span className="text-[8px] text-zinc-500 uppercase font-bold mb-1">
-                  Set {idx + 1}
-                </span>
-                <span
-                  className={`text-[10px] font-bold ${
-                    (set.winnerOverrideId &&
-                      set.winnerOverrideId === f.team1_id?.toString()) ||
-                    (!set.winnerOverrideId && set.team1Points > set.team2Points)
-                      ? "text-white"
-                      : "text-zinc-400"
-                  }`}
-                >
-                  {set.team1Points}
-                </span>
-                <div className="w-full h-px bg-zinc-800 my-0.5" />
-                <span
-                  className={`text-[10px] font-bold ${
-                    (set.winnerOverrideId &&
-                      set.winnerOverrideId === f.team2_id?.toString()) ||
-                    (!set.winnerOverrideId && set.team2Points > set.team1Points)
-                      ? "text-white"
-                      : "text-zinc-400"
-                  }`}
-                >
-                  {set.team2Points}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+        <SetScoreHistory 
+          sets={f.score?.sets} 
+          activeSet={f.score?.activeSet} 
+          team1Id={f.team1_id} 
+          team2Id={f.team2_id}
+          className="mt-4 mb-2" 
+        />
 
         <div className="mt-4 pt-3 border-t border-zinc-900 flex justify-between items-center gap-2">
           <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 truncate">
@@ -336,7 +280,7 @@ export default function TournamentDetailPage() {
             </span>
           )}
         </div>
-      </div>
+      </Link>
     );
   };
 
@@ -347,9 +291,10 @@ export default function TournamentDetailPage() {
     const isUpcoming = f.status === "upcoming" && !isLive;
 
     return (
-      <div
+      <Link
+        to={`/matches/${f.id}`}
         key={f.id}
-        className={`w-full p-4 border relative overflow-hidden transition-all ${t1Winner || t2Winner ? "border-amber-500/30 bg-zinc-950/80 shadow-[0_0_15px_rgba(245,158,11,0.05)]" : isLive ? "border-amber-500 bg-amber-500/5 shadow-[0_0_15px_rgba(245,158,11,0.15)]" : "border-zinc-800 bg-zinc-950 hover:border-zinc-700"}`}
+        className={`block w-full p-4 border relative overflow-hidden transition-all ${t1Winner || t2Winner ? "border-amber-500/30 bg-zinc-950/80 shadow-[0_0_15px_rgba(245,158,11,0.05)] hover:border-amber-500/50" : isLive ? "border-amber-500 bg-amber-500/5 shadow-[0_0_15px_rgba(245,158,11,0.15)] hover:bg-amber-500/10" : "border-zinc-800 bg-zinc-950 hover:border-zinc-700"}`}
       >
         <div className="flex justify-between items-center mb-4">
           <span
@@ -394,7 +339,7 @@ export default function TournamentDetailPage() {
             <span
               className={`text-sm font-black tabular-nums pl-2 ${t1Winner || isLive ? "text-amber-500" : "text-zinc-500"}`}
             >
-              {f.score?.team1Score ?? "-"}
+              {isLive && f.score?.sets ? (f.score.sets[f.score.activeSet ?? 0]?.team1Points ?? f.score.team1Score ?? 0) : (f.score?.team1Score ?? "-")}
             </span>
           </div>
           <div
@@ -420,11 +365,11 @@ export default function TournamentDetailPage() {
             <span
               className={`text-sm font-black tabular-nums pl-2 ${t2Winner || isLive ? "text-amber-500" : "text-zinc-500"}`}
             >
-              {f.score?.team2Score ?? "-"}
+              {isLive && f.score?.sets ? (f.score.sets[f.score.activeSet ?? 0]?.team2Points ?? f.score.team2Score ?? 0) : (f.score?.team2Score ?? "-")}
             </span>
           </div>
         </div>
-      </div>
+      </Link>
     );
   };
 

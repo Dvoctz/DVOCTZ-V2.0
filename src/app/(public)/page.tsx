@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LiveTimer } from "@/components/ui/live-timer";
+import { SetScoreHistory } from "@/components/ui/set-score-history";
 import {
   Trophy,
   ChevronRight,
@@ -260,9 +261,10 @@ export default function HomePage() {
   );
 
   const renderUpcomingCard = (f: FixturePreview) => (
-    <div
+    <Link
+      to={`/matches/${f.id}`}
       key={f.id}
-      className="group p-5 border border-zinc-900 bg-zinc-950 hover:bg-zinc-900/80 transition-colors flex flex-col justify-between"
+      className="block group p-5 border border-zinc-900 bg-zinc-950 hover:bg-zinc-900/80 transition-colors flex flex-col justify-between"
     >
       <div className="flex justify-between items-center mb-5">
         <span
@@ -305,7 +307,7 @@ export default function HomePage() {
                {f.score?.timer && <LiveTimer timerState={f.score.timer} className="text-white font-mono ml-1" />}
              </span>
              <span className="text-xl font-black text-white tabular-nums tracking-tighter">
-               {f.score?.team1Score ?? 0} - {f.score?.team2Score ?? 0}
+               {f.score?.sets?.[f.score.activeSet ?? 0]?.team1Points ?? f.score?.team1Score ?? 0} - {f.score?.sets?.[f.score.activeSet ?? 0]?.team2Points ?? f.score?.team2Score ?? 0}
              </span>
           </div>
         ) : (
@@ -337,6 +339,15 @@ export default function HomePage() {
           </span>
         </div>
       </div>
+      
+      <SetScoreHistory 
+        sets={f.score?.sets} 
+        activeSet={f.score?.activeSet} 
+        team1Id={f.team1_id} 
+        team2Id={f.team2_id}
+        className="mb-4 mt-2" 
+      />
+      
       <div className="text-center pt-4 border-t border-zinc-900">
         <span className="block text-[10px] font-mono text-zinc-500 group-hover:text-zinc-400 transition-colors">
           {new Date(f.date_time).toLocaleDateString()} •{" "}
@@ -346,7 +357,7 @@ export default function HomePage() {
           })}
         </span>
       </div>
-    </div>
+    </Link>
   );
 
   return (

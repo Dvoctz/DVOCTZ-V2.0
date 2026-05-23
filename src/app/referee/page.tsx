@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { ShieldAlert, Play, Pause, RotateCcw, Trophy, ChevronLeft, Save, CheckCircle } from "lucide-react";
+import html2canvas from "html2canvas";
 
 export default function RefereeConsole() {
   const [fixtures, setFixtures] = useState<any[]>([]);
@@ -12,7 +13,9 @@ export default function RefereeConsole() {
   const [timerTenths, setTimerTenths] = useState(0); // in tenths of a second for precision
   const [serviceSide, setServiceSide] = useState<"t1" | "t2">("t1");
   const [history, setHistory] = useState<any[]>([]); // To support undo
+  const [isCapturing, setIsCapturing] = useState(false);
   const wakeLockRef = useRef<any>(null);
+  const matchSummaryRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchFixtures();
@@ -70,7 +73,8 @@ export default function RefereeConsole() {
           *,
           team1:teams!team1_id(name, logo_url),
           team2:teams!team2_id(name, logo_url),
-          tournaments(name, division)
+          tournaments(name, division),
+          referee
         `)
         .neq('status', 'completed')
         .order("date_time", { ascending: true });
@@ -320,8 +324,43 @@ export default function RefereeConsole() {
   
   const handleFinalize = async () => {
     if (!selectedFixture) return;
-    if (!confirm("Are you sure you want to finalize this match? The official score will be recorded and live tracking will end.")) return;
+    if (!confirm("Are you sure you want to finalize this match? This action will generate official match proof.")) return;
     
+    setIsCapturing(true);
+
+    try {
+      await new Promise((r) => setTimeout(r, 800)); // Larger delay for reliability
+      if (matchSummaryRef.current) {
+        const canvas = await html2canvas(matchSummaryRef.current, { backgroundColor: '#09090b', scale: 2 });
+        await new Promise<void>((resolve, reject) => {
+          canvas.toBlob((blob) => {
+            if (!blob) {
+              reject(new Error("Failed to create image blob"));
+              return;
+            }
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.style.display = "none";
+            a.href = blobUrl;
+            a.download = `DVOC-Match-Proof-${selectedFixture.team1?.name}-vs-${selectedFixture.team2?.name}.png`;
+            document.body.appendChild(a);
+            a.click();
+            
+            setTimeout(() => {
+              document.body.removeChild(a);
+              URL.revokeObjectURL(blobUrl);
+              resolve();
+            }, 100);
+          }, "image/png");
+        });
+      }
+    } catch (err: any) {
+      console.error("Failed to capture match proof:", err);
+      alert("Warning: Failed to generate match proof screenshot. Match will still be finalized.");
+    }
+    
+    setIsCapturing(false);
+
     const sets = selectedFixture.live_state?.sets || [];
     let team1MatchScore = 0;
     let team2MatchScore = 0;
@@ -432,8 +471,105 @@ export default function RefereeConsole() {
   const t1Name = selectedFixture.team1?.name || "T1";
   const t2Name = selectedFixture.team2?.name || "T2";
 
+  let team1SetWins = 0;
+  let team2SetWins = 0;
+  currentSets.forEach((set: any) => {
+     if (set.winnerOverrideId) {
+        if (set.winnerOverrideId === selectedFixture.team1_id?.toString()) team1SetWins++;
+        else if (set.winnerOverrideId === selectedFixture.team2_id?.toString()) team2SetWins++;
+     } else {
+        if (set.team1Points > set.team2Points && set.team1Points >= 25 && set.team1Points - set.team2Points >= 2) team1SetWins++;
+        else if (set.team2Points > set.team1Points && set.team2Points >= 25 && set.team2Points - set.team1Points >= 2) team2SetWins++;
+     }
+  });
+
   return (
     <div className="flex-1 flex flex-col h-full relative overflow-hidden bg-zinc-950">
+      {/* Official Match Proof Layer */}
+      <div 
+        className={isCapturing ? "fixed inset-0 z-50 flex flex-col items-center justify-center bg-zinc-950/95 backdrop-blur-sm overflow-auto" : "fixed -left-[9999px] -top-[9999px] z-[-100]"}
+        style={{ opacity: 1, pointerEvents: isCapturing ? "auto" : "none" }}
+      >
+        {isCapturing && (
+          <div className="text-amber-500 font-bold uppercase tracking-widest mb-6 animate-pulse">
+            Generating Official Match Proof...
+          </div>
+        )}
+        <div style={{ transformOrigin: 'top center', transform: isCapturing ? 'scale(0.4)' : 'none' }}>
+          <div 
+            ref={matchSummaryRef} 
+            className="w-[800px] shrink-0 bg-zinc-950 p-12 border-8 border-amber-500 flex flex-col font-sans"
+          >
+            <div className="text-center mb-8">
+              <h2 className="text-amber-500 font-black text-3xl uppercase tracking-widest italic mb-2">DVOC OFFICIAL MATCH PROOF</h2>
+            </div>
+
+          <div className="text-center mb-10 pb-10 border-b border-zinc-800">
+             <h1 className="text-5xl font-black uppercase text-white tracking-widest mb-4">
+               {selectedFixture.tournaments?.name || "Tournament"}
+             </h1>
+             <div className="flex justify-center gap-4 text-2xl font-bold uppercase text-zinc-400 tracking-widest">
+               <span>{selectedFixture.tournaments?.division || "Division"}</span>
+               <span>•</span>
+               <span>{selectedFixture.ground || "Court TBD"}</span>
+             </div>
+          </div>
+
+          <div className="flex justify-between items-center mb-12">
+            <div className="flex-1 text-center">
+              <h3 className="text-4xl font-black italic tracking-tighter uppercase text-white mb-2 line-clamp-2 px-4 leading-tight">
+                {selectedFixture.team1?.name || "T1"}
+              </h3>
+            </div>
+            <div className="flex flex-col items-center justify-center shrink-0 px-8">
+              <span className="text-sm text-zinc-500 uppercase tracking-widest font-bold mb-2">Final Score</span>
+              <div className="flex items-center gap-6 text-7xl font-black tabular-nums">
+                <span className={team1SetWins >= team2SetWins ? "text-amber-500" : "text-zinc-300"}>{team1SetWins}</span>
+                <span className="text-4xl text-zinc-600">-</span>
+                <span className={team2SetWins >= team1SetWins ? "text-amber-500" : "text-zinc-300"}>{team2SetWins}</span>
+              </div>
+            </div>
+            <div className="flex-1 text-center">
+               <h3 className="text-4xl font-black italic tracking-tighter uppercase text-white mb-2 line-clamp-2 px-4 leading-tight">
+                {selectedFixture.team2?.name || "T2"}
+              </h3>
+            </div>
+          </div>
+
+          <div className="flex-1 flex flex-col items-center">
+            <h4 className="text-xl font-bold text-zinc-500 uppercase tracking-widest mb-6">Set Breakdown</h4>
+            <div className="flex flex-wrap justify-center gap-4">
+              {currentSets.map((set: any, idx: number) => {
+                const sT1Win = (set.winnerOverrideId && set.winnerOverrideId === selectedFixture.team1_id?.toString()) || (!set.winnerOverrideId && set.team1Points > set.team2Points);
+                const sT2Win = (set.winnerOverrideId && set.winnerOverrideId === selectedFixture.team2_id?.toString()) || (!set.winnerOverrideId && set.team2Points > set.team1Points);
+                return (
+                  <div key={idx} className="flex flex-col items-center bg-zinc-900 border border-zinc-800 rounded-lg p-6 min-w-[140px]">
+                    <span className="text-sm font-bold uppercase text-amber-500 tracking-widest mb-4">Set {idx + 1}</span>
+                    <div className="flex items-center gap-4 text-4xl font-black tabular-nums">
+                       <span className={sT1Win ? "text-white" : "text-zinc-500"}>{set.team1Points ?? 0}</span>
+                       <span className="text-zinc-700 text-2xl">-</span>
+                       <span className={sT2Win ? "text-white" : "text-zinc-500"}>{set.team2Points ?? 0}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mt-14 pt-8 border-t border-zinc-800 flex justify-between items-end text-zinc-500">
+             <div>
+               <p className="text-[10px] font-bold uppercase tracking-widest mb-1 text-zinc-600">Officiated By</p>
+               <p className="text-xl font-bold text-white uppercase tracking-widest">{selectedFixture.referee || "Match Official"}</p>
+             </div>
+             <div className="text-right">
+               <p className="text-[10px] font-bold uppercase tracking-widest mb-1 text-zinc-600">Generated At</p>
+               <p className="text-lg font-mono text-zinc-400">{new Date().toLocaleString()}</p>
+             </div>
+          </div>
+        </div>
+        </div>
+      </div>
+
       {/* Header */}
       <header className="h-16 shrink-0 border-b border-zinc-900 flex items-center justify-between px-4 sticky top-0 bg-zinc-950/90 backdrop-blur-md z-20">
         <button 
@@ -448,10 +584,11 @@ export default function RefereeConsole() {
         </div>
         <button 
           onClick={handleFinalize}
-          className="h-10 px-3 flex items-center justify-center text-black bg-amber-500 hover:bg-amber-400 transition-colors rounded-sm"
+          disabled={isCapturing}
+          className={`h-10 px-3 flex items-center justify-center text-black transition-colors rounded-sm ${isCapturing ? "bg-amber-500/50 cursor-not-allowed" : "bg-amber-500 hover:bg-amber-400"}`}
         >
            <CheckCircle className="h-4 w-4 mr-2" />
-           <span className="text-[10px] font-bold uppercase tracking-widest">Finalize</span>
+           <span className="text-[10px] font-bold uppercase tracking-widest">{isCapturing ? "Saving..." : "Finalize"}</span>
         </button>
       </header>
 

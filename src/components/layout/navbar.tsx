@@ -53,6 +53,13 @@ export function Navbar() {
               Home
             </Link>
             <Link
+              to="/live"
+              className={`${location.pathname.startsWith("/live") ? "text-amber-400 hover:text-amber-300" : "text-amber-500 hover:text-amber-300"} transition-colors flex items-center gap-1`}
+            >
+              <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+              LIVE
+            </Link>
+            <Link
               to="/tournaments"
               className={`${location.pathname.startsWith("/tournaments") ? "text-amber-400 hover:text-amber-300" : "hover:text-white"} transition-colors`}
             >
@@ -112,6 +119,13 @@ export function Navbar() {
               className={`text-2xl font-black italic tracking-tighter uppercase ${isHome && location.hash === "" ? "text-amber-500" : "text-white"}`}
             >
               Home
+            </Link>
+            <Link
+              to="/live"
+              className={`text-2xl font-black italic tracking-tighter uppercase flex items-center gap-2 ${location.pathname.startsWith("/live") ? "text-amber-500" : "text-amber-500/80"}`}
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+              LIVE
             </Link>
             <Link
               to="/tournaments"

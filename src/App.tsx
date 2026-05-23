@@ -7,6 +7,8 @@ import PlayerProfilePage from "@/app/(public)/players/[id]/page"
 import PlayersDirectoryPage from "@/app/(public)/players/page"
 import TransfersPage from "@/app/(public)/transfers/page"
 import TournamentsArchivePage from "@/app/(public)/tournaments/page"
+import LiveMatchCenterPage from "@/app/(public)/live/page"
+import MatchDetailPage from "@/app/(public)/matches/[id]/page"
 import AdminOverview from "@/app/admin/page"
 import AdminTournaments from "@/app/admin/tournaments/page"
 import AdminTeams from "@/app/admin/teams/page"
@@ -31,6 +33,8 @@ const router = createBrowserRouter([
     element: <PublicLayout />,
     children: [
       { index: true, element: <HomePage /> },
+      { path: "/live", element: <LiveMatchCenterPage /> },
+      { path: "/matches/:id", element: <MatchDetailPage /> },
       { path: "/players", element: <PlayersDirectoryPage /> },
       { path: "/transfers", element: <TransfersPage /> },
       { path: "/tournaments", element: <TournamentsArchivePage /> },
