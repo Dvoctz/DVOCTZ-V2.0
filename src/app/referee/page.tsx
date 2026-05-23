@@ -14,6 +14,8 @@ export default function RefereeConsole() {
   const [serviceSide, setServiceSide] = useState<"t1" | "t2">("t1");
   const [history, setHistory] = useState<any[]>([]); // To support undo
   const [isCapturing, setIsCapturing] = useState(false);
+  const [proofBlobUrl, setProofBlobUrl] = useState<string | null>(null);
+  const [proofFilename, setProofFilename] = useState<string>("");
   const wakeLockRef = useRef<any>(null);
   const matchSummaryRef = useRef<HTMLDivElement>(null);
 
@@ -332,36 +334,33 @@ export default function RefereeConsole() {
       await new Promise((r) => setTimeout(r, 800)); // Larger delay for reliability
       if (matchSummaryRef.current) {
         const canvas = await html2canvas(matchSummaryRef.current, { backgroundColor: '#09090b', scale: 2 });
-        await new Promise<void>((resolve, reject) => {
-          canvas.toBlob((blob) => {
-            if (!blob) {
-              reject(new Error("Failed to create image blob"));
-              return;
-            }
-            const blobUrl = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.style.display = "none";
-            a.href = blobUrl;
-            a.download = `DVOC-Match-Proof-${selectedFixture.team1?.name}-vs-${selectedFixture.team2?.name}.png`;
-            document.body.appendChild(a);
-            a.click();
-            
-            setTimeout(() => {
-              document.body.removeChild(a);
-              URL.revokeObjectURL(blobUrl);
-              resolve();
-            }, 100);
-          }, "image/png");
-        });
+        canvas.toBlob((blob) => {
+          if (!blob) {
+             alert("Warning: Failed to generate match proof screenshot. Match will still be finalized.");
+             completeFinalization();
+             return;
+          }
+          const blobUrl = URL.createObjectURL(blob);
+          setProofBlobUrl(blobUrl);
+          setProofFilename(`DVOC-Match-Proof-${selectedFixture.team1?.name}-vs-${selectedFixture.team2?.name}.png`);
+        }, "image/png");
       }
     } catch (err: any) {
       console.error("Failed to capture match proof:", err);
       alert("Warning: Failed to generate match proof screenshot. Match will still be finalized.");
+      completeFinalization();
     }
-    
+  };
+  
+  const completeFinalization = async () => {
     setIsCapturing(false);
+    if (proofBlobUrl) {
+      URL.revokeObjectURL(proofBlobUrl);
+    }
+    setProofBlobUrl(null);
+    setProofFilename("");
 
-    const sets = selectedFixture.live_state?.sets || [];
+    const sets = selectedFixture?.live_state?.sets || [];
     let team1MatchScore = 0;
     let team2MatchScore = 0;
     
@@ -487,15 +486,41 @@ export default function RefereeConsole() {
     <div className="flex-1 flex flex-col h-full relative overflow-hidden bg-zinc-950">
       {/* Official Match Proof Layer */}
       <div 
-        className={isCapturing ? "fixed inset-0 z-50 flex flex-col items-center justify-center bg-zinc-950/95 backdrop-blur-sm overflow-auto" : "fixed -left-[9999px] -top-[9999px] z-[-100]"}
+        className={isCapturing ? "fixed inset-0 z-50 flex flex-col items-center justify-start bg-zinc-950/95 backdrop-blur-sm overflow-auto pt-20" : "fixed -left-[9999px] -top-[9999px] z-[-100]"}
         style={{ opacity: 1, pointerEvents: isCapturing ? "auto" : "none" }}
       >
-        {isCapturing && (
-          <div className="text-amber-500 font-bold uppercase tracking-widest mb-6 animate-pulse">
+        {isCapturing && !proofBlobUrl && (
+          <div className="text-amber-500 font-bold uppercase tracking-widest mb-6 animate-pulse z-50">
             Generating Official Match Proof...
           </div>
         )}
-        <div style={{ transformOrigin: 'top center', transform: isCapturing ? 'scale(0.4)' : 'none' }}>
+
+        {proofBlobUrl && (
+          <div className="flex flex-col items-center justify-center gap-6 z-50 fixed inset-0 bg-zinc-950/95 backdrop-blur-md p-4">
+            <h2 className="text-2xl md:text-3xl font-black italic text-amber-500 uppercase tracking-widest text-center">Match Summary Ready</h2>
+            <p className="text-sm text-zinc-400 max-w-sm text-center mb-4">
+              The official match proof has been generated. Please save it to your device before completing the match finalization.
+            </p>
+            
+            <a 
+              href={proofBlobUrl}
+              download={proofFilename}
+              className="px-6 py-4 md:px-8 bg-amber-500 text-black font-black uppercase tracking-widest hover:bg-amber-400 transition-colors rounded-sm shadow-[0_0_20px_rgba(245,158,11,0.2)] text-center flex items-center gap-2"
+            >
+               <Save className="h-5 w-5" />
+               Save Official Match Proof
+            </a>
+            
+            <button 
+              onClick={completeFinalization}
+              className="mt-8 px-6 py-2 border border-zinc-700 text-zinc-400 font-bold uppercase tracking-widest hover:text-white hover:bg-zinc-800 transition-colors rounded-sm flex items-center justify-center gap-2"
+            >
+                Complete Finalization <ChevronLeft className="h-4 w-4 rotate-180" />
+            </button>
+          </div>
+        )}
+
+        <div style={{ transformOrigin: 'top center', transform: isCapturing && !proofBlobUrl ? 'scale(0.4) translateY(20%)' : 'none' }}>
           <div 
             ref={matchSummaryRef} 
             className="w-[800px] shrink-0 bg-zinc-950 p-12 border-8 border-amber-500 flex flex-col font-sans"
