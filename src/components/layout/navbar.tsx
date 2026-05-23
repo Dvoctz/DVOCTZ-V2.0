@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Diamond, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function Navbar() {
@@ -41,7 +41,7 @@ export function Navbar() {
             className="text-xl font-bold tracking-tighter flex items-center relative z-50"
             onClick={() => setMobileMenuOpen(false)}
           >
-            <Diamond className="h-5 w-5 mr-1.5 text-amber-500" />
+            <img src="/favicon.svg" alt="DVOC Logo" className="h-6 w-auto mr-2 object-contain" />
             <span className="text-amber-500 mr-1.5">DVOC</span>
             <span className="text-white opacity-90">V2</span>
           </Link>
