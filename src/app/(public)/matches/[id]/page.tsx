@@ -3,11 +3,13 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase/client";
+import { usePageTracking } from "@/hooks/use-page-tracking";
 import { LiveTimer } from "@/components/ui/live-timer";
 import { SetScoreHistory } from "@/components/ui/set-score-history";
 
 export default function MatchDetailPage() {
   const { id } = useParams();
+  usePageTracking({ pageType: "match", pageId: id });
   const [fixture, setFixture] = useState<any>(null);
   const [h2hFixtures, setH2hFixtures] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

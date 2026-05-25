@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase/client";
+import { usePageTracking } from "@/hooks/use-page-tracking";
 import { LiveTimer } from "@/components/ui/live-timer";
 import { SetScoreHistory } from "@/components/ui/set-score-history";
 
@@ -32,6 +33,7 @@ type FixturePreview = {
 };
 
 export default function LiveMatchCenterPage() {
+  usePageTracking({ pageType: "live" });
   const navigate = useNavigate();
   const handleTeamClick = (e: React.MouseEvent, teamId: number | null) => {
     if (!teamId) return;

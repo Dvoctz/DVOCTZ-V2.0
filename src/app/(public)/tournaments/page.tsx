@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase/client";
+import { usePageTracking } from "@/hooks/use-page-tracking";
+import { LiveTimer } from "@/components/ui/live-timer";
+import { SetScoreHistory } from "@/components/ui/set-score-history";
 import {
   CalendarDays,
   Trophy,
@@ -9,6 +12,10 @@ import {
   Shield,
   History,
   Users,
+  ChevronRight,
+  Play,
+  Radio,
+  Filter
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,8 +38,13 @@ type Fixture = {
 };
 
 export default function TournamentsArchivePage() {
+  usePageTracking({ pageType: "tournaments_archive" });
+  const navigate = useNavigate();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState("ALL");
+  const [liveFixtures, setLiveFixtures] = useState<any[]>([]);
+  const [tournamentMeta, setTournamentMeta] = useState<Record<number, any>>({});
 
   // Analytics
   const [totalClubs, setTotalClubs] = useState(0);
@@ -65,7 +77,7 @@ export default function TournamentsArchivePage() {
           supabase
             .from("fixtures")
             .select(
-              "team1_id, team2_id, winner_team_id, tournament_id, stage, status, score, winner:teams!winner_team_id(id, name), team1:teams!team1_id(name), team2:teams!team2_id(name)",
+              "id, team1_id, team2_id, winner_team_id, tournament_id, stage, status, is_live, live_state, score, date_time, ground, best_of, winner:teams!winner_team_id(id, name), team1:teams!team1_id(id, name, logo_url), team2:teams!team2_id(id, name, logo_url), tournaments(name, division)",
             ),
         ]);
 
@@ -86,7 +98,40 @@ export default function TournamentsArchivePage() {
             }
           > = {};
 
+          const meta: Record<number, any> = {};
+          const live: any[] = [];
+
           allFixtures.forEach((f: any) => {
+            const isFixtureLive = (f.status === "live" || f.is_live) && f.status !== "completed";
+            if (isFixtureLive) {
+              live.push({
+                ...f,
+                score: isFixtureLive && f.live_state ? f.live_state : f.score
+              });
+            }
+
+            if (f.tournament_id) {
+              if (!meta[f.tournament_id]) {
+                meta[f.tournament_id] = {
+                  matchCount: 0,
+                  liveCount: 0,
+                  teams: new Set(),
+                  latestResult: null,
+                };
+              }
+              const tm = meta[f.tournament_id];
+              tm.matchCount++;
+              if (isFixtureLive) tm.liveCount++;
+              if (f.team1_id) tm.teams.add(f.team1_id);
+              if (f.team2_id) tm.teams.add(f.team2_id);
+              
+              if (f.status === "completed") {
+                if (!tm.latestResult || new Date(f.date_time) > new Date(tm.latestResult.date_time)) {
+                  tm.latestResult = f;
+                }
+              }
+            }
+
             // Record participation
             const addParticipation = (teamId: number) => {
               if (!statsMap[teamId]) {
@@ -208,8 +253,14 @@ export default function TournamentsArchivePage() {
 
             if (standings.length > 0 && standings[0].points > 0) {
               tournamentChampions[tId] = standings[0].name;
+              if (meta[tId]) {
+                meta[tId].currentLeader = standings[0].name;
+              }
             }
           });
+
+          setTournamentMeta(meta);
+          setLiveFixtures(live.sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime()));
 
           setTournaments((prev) =>
             prev.map((t) => ({
@@ -240,15 +291,28 @@ export default function TournamentsArchivePage() {
     fetchData();
   }, []);
 
-  const activeTournaments = tournaments.filter(
-    (t) =>
-      t.phase === "upcoming" ||
-      t.phase === "round-robin" ||
-      t.phase === "knockout",
+  const filteredTournaments = tournaments.filter((t) => {
+    if (activeFilter === "ALL") return true;
+    if (activeFilter === "LIVE") return tournamentMeta[t.id]?.liveCount > 0;
+    if (activeFilter === "ACTIVE")
+      return (
+        t.phase === "upcoming" ||
+        t.phase === "round-robin" ||
+        t.phase === "knockout"
+      );
+    if (activeFilter === "COMPLETED") return t.phase === "completed";
+    if (activeFilter === "DIVISION 1") return t.division === "Division 1";
+    if (activeFilter === "DIVISION 2") return t.division === "Division 2";
+    return true;
+  });
+
+  const featuredTournaments = filteredTournaments.filter(
+    (t) => t.phase !== "completed" || activeFilter === "COMPLETED"
   );
-  const historicTournaments = tournaments.filter(
-    (t) => t.phase === "completed",
-  );
+
+  const historicTournaments = activeFilter === "ALL" 
+    ? tournaments.filter((t) => t.phase === "completed")
+    : [];
 
   if (loading) {
     return (
@@ -261,87 +325,145 @@ export default function TournamentsArchivePage() {
   return (
     <div className="flex-1 flex flex-col bg-black">
       {/* HEADER SECTION */}
-      <section className="bg-zinc-950 border-b border-zinc-900 py-20 px-6 md:px-10 relative overflow-hidden">
+      <section className="bg-zinc-950 border-b border-zinc-900 py-12 px-6 md:px-10 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-amber-500/10 via-zinc-950 to-zinc-950 z-0"></div>
-        <div className="max-w-7xl mx-auto relative z-10 flex flex-col items-start">
+        <div className="max-w-7xl mx-auto relative z-10 flex flex-col items-start w-full">
           <p className="text-[10px] uppercase tracking-[0.3em] text-amber-500 font-bold mb-4 flex items-center">
             <Landmark className="h-4 w-4 mr-2" /> Official Records
           </p>
-          <h1 className="text-5xl md:text-7xl font-black italic tracking-tighter uppercase text-white mb-6">
+          <h1 className="text-4xl md:text-5xl font-black italic tracking-tighter uppercase text-white mb-4">
             LEAGUE <span className="text-zinc-800">ARCHIVE</span>
           </h1>
-          <p className="text-zinc-400 font-medium max-w-2xl text-sm md:text-base leading-relaxed">
+          <p className="text-zinc-400 font-medium max-w-2xl text-[10px] md:text-sm leading-relaxed mb-8">
             The central hub for all active competitions and historical
             tournament records. Review past champions, discover upcoming
             circuits, and analyze ecosystem statistics.
           </p>
+
+          {/* COMPACT ECOSYSTEM STATS */}
+          <div className="flex flex-wrap gap-4 md:gap-8 items-center pt-6 border-t border-zinc-900/50 w-full max-w-3xl">
+            <div>
+              <span className="block text-xl font-black text-white italic leading-none mb-1">{tournaments.length}</span>
+              <span className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold">Circuits</span>
+            </div>
+            <div className="hidden md:block w-px h-6 bg-zinc-900"></div>
+            <div>
+              <span className="block text-xl font-black text-white italic leading-none mb-1">{totalFixtures}</span>
+              <span className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold">Matches</span>
+            </div>
+            <div className="hidden md:block w-px h-6 bg-zinc-900"></div>
+            <div>
+              <span className="block text-xl font-black text-white italic leading-none mb-1">{totalClubs}</span>
+              <span className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold">Clubs</span>
+            </div>
+            <div className="hidden md:block w-px h-6 bg-zinc-900"></div>
+            <div>
+              <span className="block text-xl font-black text-white italic leading-none mb-1">{totalPlayers}</span>
+              <span className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold">Athletes</span>
+            </div>
+          </div>
         </div>
       </section>
 
-      <div className="max-w-7xl mx-auto w-full p-6 md:p-10 space-y-20">
-        {/* LEAGUE STATISTICS SECTION */}
-        <section>
-          <h2 className="text-2xl font-black tracking-tight italic text-white flex items-center gap-3 mb-8">
-            <Activity className="h-6 w-6 text-amber-500" /> League Ecosystem
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-zinc-950 border border-zinc-900 p-6 flex flex-col">
-              <span className="text-3xl font-black text-white italic mb-1">
-                {tournaments.length}
+      <div className="max-w-7xl mx-auto w-full p-6 md:p-10 space-y-12">
+        
+        {/* LIVE NOW SECTION */}
+        {liveFixtures.length > 0 && (
+          <section>
+            <div className="flex items-center gap-3 mb-6">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
               </span>
-              <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">
-                Total Circuits
-              </span>
+              <h2 className="text-xl md:text-2xl font-black tracking-tight italic text-white uppercase">LIVE NOW</h2>
             </div>
-            <div className="bg-zinc-950 border border-zinc-900 p-6 flex flex-col">
-              <span className="text-3xl font-black text-white italic mb-1">
-                {totalClubs}
-              </span>
-              <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">
-                Registered Clubs
-              </span>
-            </div>
-            <div className="bg-zinc-950 border border-zinc-900 p-6 flex flex-col">
-              <span className="text-3xl font-black text-white italic mb-1">
-                {totalFixtures}
-              </span>
-              <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">
-                Fixtures Played
-              </span>
-            </div>
-            <div className="bg-zinc-950 border border-zinc-900 p-6 flex flex-col">
-              <span className="text-3xl font-black text-white italic mb-1">
-                {totalPlayers}
-              </span>
-              <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">
-                Active Athletes
-              </span>
-            </div>
-          </div>
-        </section>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+               {liveFixtures.map(f => (
+                 <div key={f.id} onClick={() => navigate(`/live`)} className="bg-zinc-950 border border-zinc-900 p-4 flex flex-col items-start gap-4 cursor-pointer hover:border-amber-500/50 transition-colors group relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-red-500 hidden group-hover:block"></div>
+                    <div className="flex justify-between items-center w-full">
+                       <span className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold">{f.tournaments?.name || "Tournament Match"}</span>
+                       <LiveTimer matchTime={new Date(f.date_time).getTime()} />
+                    </div>
+                    
+                    <div className="w-full flex justify-between items-center bg-zinc-900/50 p-3">
+                       <div className="flex items-center gap-3 w-2/5">
+                         {f.team1?.logo_url ? (
+                           <img src={f.team1.logo_url} className="w-6 h-6 object-cover bg-zinc-900" alt="team1" />
+                         ) : (
+                           <div className="w-6 h-6 bg-zinc-900 border border-zinc-800 text-[8px] font-bold text-white flex items-center justify-center">T1</div>
+                         )}
+                         <span className="text-xs md:text-sm font-bold text-white truncate">{f.team1?.name}</span>
+                       </div>
+                       
+                       <div className="flex-1 flex justify-center px-2">
+                           <SetScoreHistory 
+                              score={f.score} 
+                              status={f.status} 
+                              team1Id={f.team1_id} 
+                              team2Id={f.team2_id} 
+                           />
+                       </div>
 
-        {/* ACTIVE TOURNAMENTS SECTION */}
+                       <div className="flex items-center justify-end gap-3 w-2/5">
+                         <span className="text-xs md:text-sm font-bold text-white truncate text-right">{f.team2?.name}</span>
+                         {f.team2?.logo_url ? (
+                           <img src={f.team2.logo_url} className="w-6 h-6 object-cover bg-zinc-900" alt="team2" />
+                         ) : (
+                           <div className="w-6 h-6 bg-zinc-900 border border-zinc-800 text-[8px] font-bold text-white flex items-center justify-center">T2</div>
+                         )}
+                       </div>
+                    </div>
+                 </div>
+               ))}
+            </div>
+          </section>
+        )}
+
+        {/* QUICK FILTERS */}
+        <div className="flex flex-wrap items-center gap-2 md:gap-4 pb-4 border-b border-zinc-900">
+           <Filter className="h-4 w-4 text-zinc-500 mr-2" />
+           {["ALL", "LIVE", "ACTIVE", "COMPLETED", "DIVISION 1", "DIVISION 2"].map(f => (
+             <button
+               key={f}
+               onClick={() => setActiveFilter(f)}
+               className={`text-[9px] md:text-[10px] font-bold tracking-widest uppercase px-3 py-1.5 transition-colors ${
+                 activeFilter === f 
+                   ? "bg-amber-500 text-black" 
+                   : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-white"
+               }`}
+             >
+               {f}
+             </button>
+           ))}
+        </div>
+
+        {/* FEATURED COMPETITIONS SECTION */}
         <section>
           <div className="flex items-end justify-between mb-8">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.2em] text-amber-500 mb-2 font-bold">
-                Current Competitions
+              <p className="text-[10px] uppercase tracking-[0.2em] text-amber-500 mb-2 font-bold flex items-center">
+                <Trophy className="h-4 w-4 mr-2" /> Premier Events
               </p>
-              <h2 className="text-3xl font-black tracking-tight italic text-white">
-                Active Circuits
+              <h2 className="text-3xl lg:text-4xl font-black tracking-tight italic text-white uppercase">
+                Featured Competitions
               </h2>
             </div>
           </div>
 
-          {activeTournaments.length === 0 ? (
+          {featuredTournaments.length === 0 ? (
             <div className="text-center py-16 border border-dashed border-zinc-900 bg-zinc-950/20">
               <p className="text-xs uppercase tracking-widest text-zinc-500 font-bold">
-                No active tournaments currently
+                No active competitions match your filter.
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {activeTournaments.map((t) => (
+              {featuredTournaments.map((t) => {
+                const meta = tournamentMeta[t.id];
+                const isLive = meta?.liveCount > 0;
+                
+                return (
                 <Card
                   key={t.id}
                   className="bg-zinc-950 border-zinc-900 rounded-none overflow-hidden group hover:border-amber-500/30 transition-colors flex flex-col"
@@ -349,6 +471,11 @@ export default function TournamentsArchivePage() {
                   {t.banner_url ? (
                     <div className="h-40 w-full overflow-hidden relative">
                       <div className="absolute inset-0 bg-black/40 group-hover:bg-transparent transition-colors z-10" />
+                      {isLive && (
+                        <div className="absolute top-4 left-4 z-20 bg-red-500 text-white text-[9px] font-bold uppercase tracking-widest px-2 py-1 flex items-center">
+                           <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse mr-1.5"></span> LIVE
+                        </div>
+                      )}
                       <img
                         src={t.banner_url}
                         alt={t.name}
@@ -357,10 +484,15 @@ export default function TournamentsArchivePage() {
                     </div>
                   ) : (
                     <div className="h-40 w-full bg-zinc-900 flex items-center justify-center relative overflow-hidden group-hover:bg-zinc-800 transition-colors">
+                      {isLive && (
+                        <div className="absolute top-4 left-4 z-20 bg-red-500 text-white text-[9px] font-bold uppercase tracking-widest px-2 py-1 flex items-center">
+                           <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse mr-1.5"></span> LIVE
+                        </div>
+                      )}
                       <Trophy className="h-10 w-10 text-zinc-800 group-hover:text-amber-500/20 transition-colors" />
                     </div>
                   )}
-                  <CardHeader className="p-6">
+                  <CardHeader className="p-6 pb-4">
                     <div className="flex justify-between items-start mb-2">
                       <span className="text-[9px] uppercase tracking-widest text-amber-500 font-bold bg-amber-500/10 px-2 py-1 rounded-sm border border-amber-500/20">
                         {t.division || "Open Division"}
@@ -372,49 +504,115 @@ export default function TournamentsArchivePage() {
                     <CardTitle className="text-xl font-black italic text-white group-hover:text-amber-500 transition-colors line-clamp-2">
                       {t.name}
                     </CardTitle>
-                    {t.start_date && (
-                      <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold mt-2 flex items-center">
-                        <CalendarDays className="h-3 w-3 mr-1" />
-                        {new Date(t.start_date).toLocaleDateString()}{" "}
-                        {t.end_date
-                          ? ` - ${new Date(t.end_date).toLocaleDateString()}`
-                          : ""}
-                      </p>
-                    )}
+                    
+                    <div className="flex items-center gap-4 mt-4">
+                       <div className="flex flex-col">
+                          <span className="text-lg font-black text-white leading-none">{meta?.teams?.size || 0}</span>
+                          <span className="text-[8px] uppercase tracking-widest text-zinc-500 font-bold">Teams</span>
+                       </div>
+                       <div className="w-px h-6 bg-zinc-800"></div>
+                       <div className="flex flex-col">
+                          <span className="text-lg font-black text-white leading-none">{meta?.matchCount || 0}</span>
+                          <span className="text-[8px] uppercase tracking-widest text-zinc-500 font-bold">Matches</span>
+                       </div>
+                    </div>
                   </CardHeader>
-                  <CardContent className="p-6 pt-0 mt-auto">
+                  <CardContent className="p-6 pt-0 mt-auto flex flex-col gap-4">
+                    {meta?.currentLeader && (
+                      <div className="bg-zinc-900/50 p-2.5 flex items-center gap-2">
+                        <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                        <span className="text-[9px] uppercase text-zinc-400 font-bold">Leader:</span>
+                        <span className="text-[10px] uppercase font-black text-white truncate">{meta.currentLeader}</span>
+                      </div>
+                    )}
+
                     <Link to={`/tournaments/${t.id}`}>
-                      <Button className="w-full bg-zinc-900 text-white hover:bg-amber-500 hover:text-black uppercase text-[10px] font-bold tracking-widest transition-all">
+                      <Button className="w-full h-10 bg-zinc-900 text-white hover:bg-amber-500 hover:text-black uppercase text-[10px] font-bold tracking-widest transition-all">
                         Enter Hub
                       </Button>
                     </Link>
                   </CardContent>
                 </Card>
-              ))}
+              )})}
             </div>
           )}
         </section>
 
-        {/* HISTORIC TOURNAMENTS SECTION */}
-        <section>
-          <div className="flex items-end justify-between mb-8 pb-4 border-b border-zinc-900">
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-2 font-bold flex items-center">
-                <History className="h-3 w-3 mr-2" /> Legacy Records
-              </p>
-              <h2 className="text-3xl font-black tracking-tight italic text-zinc-300">
-                Historic Tournaments
+        {/* BEST TEAMS / STORYLINES SECTION */}
+        {teamStats.length > 0 && (
+          <section className="bg-zinc-950 border border-zinc-900 p-8">
+            <div className="flex items-center gap-3 mb-8 pb-4 border-b border-zinc-900">
+              <Shield className="h-5 w-5 text-amber-500" />
+              <h2 className="text-2xl font-black tracking-tight italic text-white uppercase">
+                Prestigious Clubs
               </h2>
             </div>
-          </div>
 
-          {historicTournaments.length === 0 ? (
-            <div className="text-center py-16 border border-dashed border-zinc-900 bg-zinc-950/20">
-              <p className="text-xs uppercase tracking-widest text-zinc-500 font-bold">
-                No historic records available
-              </p>
+            <div className="space-y-4">
+              {teamStats.map((team, idx) => (
+                <div
+                  key={idx}
+                  className="flex justify-between items-center p-4 bg-zinc-900/40 border border-zinc-800 hover:border-amber-500/20 transition-colors group cursor-default"
+                >
+                  <div className="flex items-center gap-4">
+                    <span className="text-[10px] font-black w-6 h-6 flex items-center justify-center bg-zinc-900 text-zinc-500 shrink-0 group-hover:bg-amber-500 group-hover:text-black transition-colors">
+                      #{idx + 1}
+                    </span>
+                    <span className="text-sm font-bold text-white uppercase tracking-wider">
+                      {team.name}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-6">
+                    <div className="text-right hidden sm:block">
+                      <span className="block text-xl font-black italic text-zinc-400">
+                        {team.totalMatches > 0
+                          ? Math.round(
+                              (team.matchesWon / team.totalMatches) * 100,
+                            )
+                          : 0}
+                        %
+                      </span>
+                      <span className="block text-[8px] uppercase tracking-widest text-zinc-500 font-bold">
+                        Win Rate
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="block text-xl font-black italic text-zinc-400">
+                        {team.finals}
+                      </span>
+                      <span className="block text-[8px] uppercase tracking-widest text-zinc-500 font-bold">
+                        Finals
+                      </span>
+                    </div>
+                    <div className="text-right min-w-[3rem]">
+                      <span className="block text-xl font-black italic text-amber-500">
+                        {team.wins}
+                      </span>
+                      <span className="block text-[8px] uppercase tracking-widest text-zinc-500 font-bold">
+                        Wins
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-          ) : (
+          </section>
+        )}
+
+        {/* HISTORIC TOURNAMENTS SECTION */}
+        {historicTournaments.length > 0 && activeFilter === "ALL" && (
+          <section>
+            <div className="flex items-end justify-between mb-8 pb-4 border-b border-zinc-900">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-2 font-bold flex items-center">
+                  <History className="h-3 w-3 mr-2" /> Legacy Records
+                </p>
+                <h2 className="text-2xl md:text-3xl font-black tracking-tight italic text-zinc-300 uppercase">
+                  Historic Tournaments
+                </h2>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {historicTournaments.map((t) => (
                 <Link
@@ -458,67 +656,6 @@ export default function TournamentsArchivePage() {
                     </div>
                   </div>
                 </Link>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* BEST TEAMS SECTION */}
-        {teamStats.length > 0 && (
-          <section className="bg-zinc-950 border border-zinc-900 p-8">
-            <div className="flex items-center gap-3 mb-8 pb-4 border-b border-zinc-900">
-              <Shield className="h-5 w-5 text-amber-500" />
-              <h2 className="text-2xl font-black tracking-tight italic text-white">
-                Prestigious Clubs
-              </h2>
-            </div>
-
-            <div className="space-y-4">
-              {teamStats.map((team, idx) => (
-                <div
-                  key={idx}
-                  className="flex justify-between items-center p-4 bg-zinc-900/40 border border-zinc-800 hover:border-amber-500/20 transition-colors"
-                >
-                  <div className="flex items-center gap-4">
-                    <span className="text-[10px] font-black w-6 h-6 flex items-center justify-center bg-zinc-900 text-zinc-500 shrink-0">
-                      #{idx + 1}
-                    </span>
-                    <span className="text-sm font-bold text-white uppercase tracking-wider">
-                      {team.name}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-6">
-                    <div className="text-right">
-                      <span className="block text-xl font-black italic text-zinc-400">
-                        {team.totalMatches > 0
-                          ? Math.round(
-                              (team.matchesWon / team.totalMatches) * 100,
-                            )
-                          : 0}
-                        %
-                      </span>
-                      <span className="block text-[8px] uppercase tracking-widest text-zinc-500 font-bold">
-                        Win Rate
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <span className="block text-xl font-black italic text-zinc-400">
-                        {team.finals}
-                      </span>
-                      <span className="block text-[8px] uppercase tracking-widest text-zinc-500 font-bold">
-                        Finals
-                      </span>
-                    </div>
-                    <div className="text-right min-w-[3rem]">
-                      <span className="block text-xl font-black italic text-amber-500">
-                        {team.wins}
-                      </span>
-                      <span className="block text-[8px] uppercase tracking-widest text-zinc-500 font-bold">
-                        Wins
-                      </span>
-                    </div>
-                  </div>
-                </div>
               ))}
             </div>
           </section>

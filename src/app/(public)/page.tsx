@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase/client";
+import { usePageTracking } from "@/hooks/use-page-tracking";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LiveTimer } from "@/components/ui/live-timer";
@@ -53,6 +54,7 @@ type FixturePreview = {
 };
 
 export default function HomePage() {
+  usePageTracking({ pageType: "homepage" });
   const navigate = useNavigate();
   const handleTeamClick = (e: React.MouseEvent, teamId: number | null) => {
     if (!teamId) return;
@@ -78,10 +80,16 @@ export default function HomePage() {
     tournamentName: string;
     tournamentId: number;
   } | null>(null);
+  const [platformStats, setPlatformStats] = useState({
+    total: 0,
+    tournaments: 0,
+    live: 0,
+    teams: 0,
+  });
 
   useEffect(() => {
     const loadHomeData = async () => {
-      const [tRes, uRes, rRes, sRes] = await Promise.all([
+      const [tRes, uRes, rRes, sRes, totalRes, tourneyRes, liveRes, teamsRes] = await Promise.all([
         supabase
           .from("tournaments")
           .select("*")
@@ -103,10 +111,21 @@ export default function HomePage() {
           .order("date_time", { ascending: false })
           .limit(5),
         supabase.from("sponsors").select("*"),
+        supabase.from("page_visits").select("*", { count: "exact", head: true }),
+        supabase.from("page_visits").select("*", { count: "exact", head: true }).eq("page_type", "tournament"),
+        supabase.from("page_visits").select("*", { count: "exact", head: true }).in("page_type", ["live", "match"]),
+        supabase.from("teams").select("*", { count: "exact", head: true })
       ]);
 
       const loadedTournaments = tRes.data || [];
       setTournaments(loadedTournaments);
+      
+      setPlatformStats({
+        total: totalRes.count || 0,
+        tournaments: tourneyRes.count || 0,
+        live: liveRes.count || 0,
+        teams: teamsRes.count || 0,
+      });
       if (uRes.data) {
         setUpcomingFixtures(uRes.data.map((f: any) => {
           const isFixtureLive = (f.status === "live" || f.is_live) && f.status !== "completed";
@@ -408,6 +427,33 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Platform Statistics */}
+      {(platformStats.total > 0) && (
+        <section className="bg-black py-4 border-b border-zinc-900 flex justify-center">
+          <div className="w-full px-6 md:px-10 flex flex-wrap justify-between md:justify-center items-center gap-4 md:gap-12">
+            <div className="flex flex-col items-center md:items-start text-center md:text-left">
+              <span className="text-xl md:text-2xl font-black text-white">{platformStats.total.toLocaleString()}</span>
+              <span className="text-[9px] tracking-widest uppercase font-bold text-zinc-500">Total Visits</span>
+            </div>
+            <div className="w-px h-8 bg-zinc-900 hidden md:block"></div>
+            <div className="flex flex-col items-center md:items-start text-center md:text-left">
+              <span className="text-xl md:text-2xl font-black text-amber-500">{platformStats.live.toLocaleString()}</span>
+              <span className="text-[9px] tracking-widest uppercase font-bold text-zinc-500">Live Match Views</span>
+            </div>
+            <div className="w-px h-8 bg-zinc-900 hidden md:block"></div>
+            <div className="flex flex-col items-center md:items-start text-center md:text-left">
+              <span className="text-xl md:text-2xl font-black text-white">{activeTournaments.length}</span>
+              <span className="text-[9px] tracking-widest uppercase font-bold text-zinc-500">Active Tourneys</span>
+            </div>
+            <div className="w-px h-8 bg-zinc-900 hidden md:block"></div>
+            <div className="flex flex-col items-center md:items-start text-center md:text-left">
+              <span className="text-xl md:text-2xl font-black text-white">{platformStats.teams}</span>
+              <span className="text-[9px] tracking-widest uppercase font-bold text-zinc-500">Registered Teams</span>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Champion Banner Section */}
       {(div1Champion || div2Champion) && (
         <section className="bg-gradient-to-b from-amber-500/10 to-black border-b border-amber-500/20 p-8 md:p-12 relative overflow-hidden">
@@ -566,6 +612,7 @@ export default function HomePage() {
           </div>
         </section>
       )}
+
 
       {/* Sponsors Section */}
       {sponsors.length > 0 && (

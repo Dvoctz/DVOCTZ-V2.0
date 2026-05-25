@@ -2,6 +2,7 @@ import React from "react";
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase/client";
+import { usePageTracking } from "@/hooks/use-page-tracking";
 import { LiveTimer } from "@/components/ui/live-timer";
 import { SetScoreHistory } from "@/components/ui/set-score-history";
 import { Trophy, CalendarDays, ChevronLeft, ArrowLeft } from "lucide-react";
@@ -43,6 +44,7 @@ type Fixture = {
 
 export default function TournamentDetailPage() {
   const { id } = useParams<{ id: string }>();
+  usePageTracking({ pageType: "tournament", pageId: id });
   const navigate = useNavigate();
   
   const handleTeamClick = (e: React.MouseEvent, teamId: number | null) => {

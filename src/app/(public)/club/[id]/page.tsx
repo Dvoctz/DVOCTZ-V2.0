@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase/client";
+import { usePageTracking } from "@/hooks/use-page-tracking";
 import { MoveLeft, Shield, Users, Activity, BarChart2 } from "lucide-react";
 
 type Club = {
@@ -30,6 +31,7 @@ type Player = {
 
 export default function ClubDeepDivePage() {
   const { id } = useParams<{ id: string }>();
+  usePageTracking({ pageType: "club", pageId: id });
   const navigate = useNavigate();
   const [club, setClub] = useState<Club | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
