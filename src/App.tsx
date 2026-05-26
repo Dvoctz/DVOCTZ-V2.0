@@ -21,6 +21,7 @@ import AdminClubs from "@/app/admin/clubs/page"
 import AdminSponsors from "@/app/admin/sponsors/page"
 import AdminOfficials from "@/app/admin/officials/page"
 import LoginPage from "@/app/auth/login/page"
+import ChangePasswordPage from "@/app/auth/change-password/page"
 import { RefereeLayout } from "@/components/layout/referee-layout"
 import RefereeConsole from "@/app/referee/page"
 
@@ -66,6 +67,10 @@ const router = createBrowserRouter([
   {
     path: "/auth/login",
     element: <LoginPage />
+  },
+  {
+    path: "/auth/change-password",
+    element: <ChangePasswordPage />
   }
 ])
 

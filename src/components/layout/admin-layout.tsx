@@ -26,9 +26,14 @@ export function AdminLayout() {
       
       const { data: profile } = await supabase
         .from('user_profiles')
-        .select('role, full_name, email')
+        .select('role, full_name, email, must_change_password')
         .eq('id', session.user.id)
         .single();
+
+      if (profile?.must_change_password) {
+        navigate("/auth/change-password");
+        return;
+      }
 
       const role = profile?.role || "player";
       setUserRole(role);
@@ -61,9 +66,14 @@ export function AdminLayout() {
 
       const { data: profile } = await supabase
         .from('user_profiles')
-        .select('role, full_name, email')
+        .select('role, full_name, email, must_change_password')
         .eq('id', session.user.id)
         .single();
+
+      if (profile?.must_change_password) {
+        navigate("/auth/change-password");
+        return;
+      }
 
       const role = profile?.role || "player";
       setUserRole(role);

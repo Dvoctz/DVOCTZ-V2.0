@@ -17,7 +17,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -25,7 +25,21 @@ export default function LoginPage() {
       if (error) {
         setError(error.message);
       } else {
-        navigate("/admin");
+        const { data: profile } = await supabase
+          .from("user_profiles")
+          .select("role, must_change_password")
+          .eq("id", data.user.id)
+          .single();
+
+        if (profile?.must_change_password) {
+          navigate("/auth/change-password");
+        } else {
+          if (profile?.role === "referee" || profile?.role === "player") {
+            navigate("/referee");
+          } else {
+            navigate("/admin");
+          }
+        }
       }
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred");

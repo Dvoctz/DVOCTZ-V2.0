@@ -17,10 +17,15 @@ export function RefereeLayout() {
       
       const { data: profile } = await supabase
           .from('user_profiles')
-          .select('role')
+          .select('role, must_change_password')
           .eq('id', session.user.id)
           .single();
           
+      if (profile?.must_change_password) {
+        navigate("/auth/change-password");
+        return;
+      }
+
       const role = profile?.role || "player";
       
       if (role === "admin" || role === "fixture_manager" || role === "referee" || session.user.email?.includes('admin')) {
