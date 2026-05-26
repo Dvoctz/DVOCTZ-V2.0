@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase/client";
 import { usePageTracking } from "@/hooks/use-page-tracking";
@@ -51,6 +51,7 @@ type FixturePreview = {
   } | null;
   winner?: { name: string };
   tournaments?: { name: string; division?: string; phase?: string };
+  officiating_team?: { name: string };
 };
 
 export default function HomePage() {
@@ -86,6 +87,7 @@ export default function HomePage() {
     live: 0,
     teams: 0,
   });
+  const [activeFixtureTab, setActiveFixtureTab] = useState<"LIVE" | "UPCOMING" | "COMPLETED">("LIVE");
 
   useEffect(() => {
     const loadHomeData = async () => {
@@ -97,7 +99,7 @@ export default function HomePage() {
         supabase
           .from("fixtures")
           .select(
-            "id, tournament_id, team1_id, team2_id, status, is_live, live_state, date_time, ground, best_of, team1:teams!team1_id(name, logo_url), team2:teams!team2_id(name, logo_url), tournaments(name, division, phase)",
+            "id, tournament_id, team1_id, team2_id, status, is_live, live_state, date_time, ground, best_of, team1:teams!team1_id(name, logo_url), team2:teams!team2_id(name, logo_url), tournaments(name, division, phase), officiating_team:teams!officiating_team_id(name)",
           )
           .in("status", ["upcoming", "live"])
           .order("date_time", { ascending: true })
@@ -105,7 +107,7 @@ export default function HomePage() {
         supabase
           .from("fixtures")
           .select(
-            "id, tournament_id, team1_id, team2_id, status, date_time, ground, best_of, score, winner:teams!winner_team_id(name), team1:teams!team1_id(name, logo_url), team2:teams!team2_id(name, logo_url), tournaments(name, division, phase)",
+            "id, tournament_id, team1_id, team2_id, status, date_time, ground, best_of, score, winner:teams!winner_team_id(name), team1:teams!team1_id(name, logo_url), team2:teams!team2_id(name, logo_url), tournaments(name, division, phase), officiating_team:teams!officiating_team_id(name)",
           )
           .eq("status", "completed")
           .order("date_time", { ascending: false })
@@ -283,6 +285,12 @@ export default function HomePage() {
     ),
   );
 
+  const displayedPublicFixtures = activeFixtureTab === "LIVE"
+    ? upcomingFixtures.filter((f) => (f.status === "live" || f.is_live))
+    : activeFixtureTab === "UPCOMING"
+    ? upcomingFixtures.filter((f) => f.status === "upcoming" && !(f.status === "live" || f.is_live))
+    : recentFixtures;
+
   const renderUpcomingCard = (f: FixturePreview) => (
     <Link
       to={`/matches/${f.id}`}
@@ -377,7 +385,12 @@ export default function HomePage() {
         className="mb-4 mt-2" 
       />
       
-      <div className="text-center pt-4 border-t border-zinc-900">
+      <div className="text-center pt-4 border-t border-zinc-900 flex flex-col items-center gap-2">
+        {f.officiating_team?.name && (
+          <span className="text-[10px] uppercase font-bold tracking-widest text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-sm inline-block">
+            Officiating: {f.officiating_team.name}
+          </span>
+        )}
         <span className="block text-[10px] font-mono text-zinc-500 group-hover:text-zinc-400 transition-colors">
           {new Date(f.date_time).toLocaleDateString()} •{" "}
           {new Date(f.date_time).toLocaleTimeString([], {
@@ -523,27 +536,45 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* Upcoming Matches */}
+      {/* Fixtures Center */}
       <section className="border-b border-zinc-900 bg-black p-6 md:p-10">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-6 mb-8">
           <h3 className="text-lg font-bold tracking-tight italic text-white flex items-center gap-2">
-            <CalendarDays className="h-5 w-5 text-amber-500" /> Upcoming Matches
+            <CalendarDays className="h-5 w-5 text-amber-500" /> Match Center
           </h3>
+          <div className="flex bg-zinc-900/50 p-1 rounded-md max-w-sm border border-zinc-800/50 w-full md:w-auto">
+            {(["LIVE", "UPCOMING", "COMPLETED"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveFixtureTab(tab)}
+                className={`flex-1 min-w-[90px] text-[10px] font-bold uppercase tracking-widest py-2 px-3 rounded-sm transition-all ${
+                  activeFixtureTab === tab
+                    ? "bg-zinc-800 text-amber-500 shadow-sm"
+                    : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50"
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {[...upcomingDiv1, ...upcomingDiv2].length === 0 ? (
+        {displayedPublicFixtures.length === 0 ? (
           <div className="p-8 border border-dashed border-zinc-800 text-center">
             <p className="text-xs uppercase tracking-widest text-zinc-500 font-bold">
-              No upcoming active fixtures
+              No fixtures found in this category
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {[...upcomingDiv1, ...upcomingDiv2]
+            {displayedPublicFixtures
               .sort(
-                (a, b) =>
-                  new Date(a.date_time).getTime() -
-                  new Date(b.date_time).getTime(),
+                (a, b) => {
+                  if (activeFixtureTab === "COMPLETED") {
+                    return new Date(b.date_time).getTime() - new Date(a.date_time).getTime();
+                  }
+                  return new Date(a.date_time).getTime() - new Date(b.date_time).getTime();
+                }
               )
               .map((f) => renderUpcomingCard(f))}
           </div>

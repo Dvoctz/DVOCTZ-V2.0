@@ -383,7 +383,7 @@ export default function TournamentsArchivePage() {
                     <div className="absolute top-0 left-0 w-1 h-full bg-red-500 hidden group-hover:block"></div>
                     <div className="flex justify-between items-center w-full">
                        <span className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold">{f.tournaments?.name || "Tournament Match"}</span>
-                       <LiveTimer matchTime={new Date(f.date_time).getTime()} />
+                       <LiveTimer timerState={f.score?.timer} className="text-white font-mono ml-1" />
                     </div>
                     
                     <div className="w-full flex justify-between items-center bg-zinc-900/50 p-3">
@@ -398,8 +398,8 @@ export default function TournamentsArchivePage() {
                        
                        <div className="flex-1 flex justify-center px-2">
                            <SetScoreHistory 
-                              score={f.score} 
-                              status={f.status} 
+                              sets={f.score?.sets} 
+                              activeSet={f.score?.activeSet} 
                               team1Id={f.team1_id} 
                               team2Id={f.team2_id} 
                            />

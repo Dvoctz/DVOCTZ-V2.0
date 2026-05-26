@@ -289,7 +289,7 @@ export default function TeamDeepDivePage() {
                      acc[tName].push(f);
                      return acc;
                    }, {} as Record<string, Fixture[]>)
-                 ).map(([tName, tFixtures]) => {
+                 ).map(([tName, tFixtures]: any) => {
                    const isExpanded = expandedTournaments[tName] ?? true;
                    return (
                      <div key={tName} className="border border-zinc-900 bg-zinc-950/50 overflow-hidden">

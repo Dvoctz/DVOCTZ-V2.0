@@ -20,11 +20,13 @@ type Fixture = {
   man_of_the_match_id: number | string | null;
   best_of: number;
   score: any;
+  is_live?: boolean;
   tournaments?: { name: string; division?: string; phase?: string };
   team1?: { name: string };
   team2?: { name: string };
   winner?: { name: string };
   players?: { name: string };
+  officiating_team?: { name: string };
 };
 
 type Tournament = {
@@ -71,7 +73,7 @@ export function FixturesManager({
   // Filtering state
   const [searchQuery, setSearchQuery] = useState("");
   const [tournamentFilter, setTournamentFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [activeTab, setActiveTab] = useState<"LIVE" | "UPCOMING" | "COMPLETED">("UPCOMING");
 
   const [formData, setFormData] = useState({
     tournament_id: "",
@@ -104,7 +106,16 @@ export function FixturesManager({
         const div = f.tournaments?.division;
         if (filterDivision && div !== filterDivision) return false;
         if (f.tournament_id?.toString() !== tournamentFilter) return false;
-        if (statusFilter && f.status !== statusFilter) return false;
+        
+        if (activeTab === "LIVE") {
+          if (f.status !== "live" && !f.is_live) return false;
+        } else if (activeTab === "UPCOMING") {
+          if (f.status !== "upcoming" && f.status !== "live") return false; // Show all non-completed that aren't specifically filtered
+          if (activeTab === "UPCOMING" && (f.status === "live" || f.is_live)) return false; // Hide live from upcoming
+        } else if (activeTab === "COMPLETED") {
+          if (f.status !== "completed") return false;
+        }
+
         if (searchQuery) {
           const q = searchQuery.toLowerCase();
           const t1 = f.team1?.name?.toLowerCase() || "";
@@ -125,7 +136,7 @@ export function FixturesManager({
           supabase
             .from("fixtures")
             .select(
-              "*, tournaments(name, division, phase), team1:teams!team1_id(name), team2:teams!team2_id(name), winner:teams!winner_team_id(name), players(name)",
+              "*, tournaments(name, division, phase), team1:teams!team1_id(name), team2:teams!team2_id(name), winner:teams!winner_team_id(name), players(name), officiating_team:teams!officiating_team_id(name)",
             )
             .order("date_time", { ascending: false }),
           supabase
@@ -439,18 +450,6 @@ export function FixturesManager({
               </option>
             ))}
           </select>
-          <select
-            className="w-full md:w-auto bg-zinc-900 border border-zinc-800 px-3 py-2 text-sm focus:outline-none focus:border-purple-500/50 text-white transition-colors h-10 rounded-md"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="">All Statuses</option>
-            {FIXTURE_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {status.charAt(0).toUpperCase() + status.slice(1)}
-              </option>
-            ))}
-          </select>
           <Button
             onClick={() => handleOpenModal()}
             disabled={!tournamentFilter}
@@ -460,6 +459,25 @@ export function FixturesManager({
           </Button>
         </div>
       </div>
+
+      {/* Tabs */}
+      {tournamentFilter && (
+        <div className="flex bg-zinc-900/50 p-1 rounded-md mb-6 w-full max-w-sm border border-zinc-800/50">
+          {(["LIVE", "UPCOMING", "COMPLETED"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 text-[10px] font-bold uppercase tracking-widest py-2 rounded-sm transition-all ${
+                activeTab === tab
+                  ? "bg-zinc-800 text-purple-400 shadow-sm"
+                  : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      )}
 
       {error && !isModalOpen && (
         <div className="mb-6 bg-red-500/10 border border-red-500/50 text-red-500 text-[10px] p-4 font-bold uppercase tracking-widest">
@@ -487,12 +505,11 @@ export function FixturesManager({
           <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">
             No fixtures match the criteria
           </p>
-          {searchQuery || tournamentFilter || statusFilter ? (
+          {searchQuery || tournamentFilter ? (
             <Button
               onClick={() => {
                 setSearchQuery("");
                 setTournamentFilter("");
-                setStatusFilter("");
               }}
               variant="outline"
               size="sm"
@@ -598,6 +615,11 @@ export function FixturesManager({
                             {f.ground && (
                               <span className="text-[10px] text-zinc-500 italic font-normal tracking-wide">
                                 Ground: {f.ground}
+                              </span>
+                            )}
+                            {(f.officiating_team?.name || f.referee) && (
+                              <span className="text-[10px] text-blue-400 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded-sm flex items-center gap-1 font-bold uppercase tracking-widest">
+                                Officiating: {f.officiating_team?.name || f.referee}
                               </span>
                             )}
                           </div>
