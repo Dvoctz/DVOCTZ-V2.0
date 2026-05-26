@@ -9,15 +9,21 @@ export function RefereeLayout() {
   const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) {
         navigate("/auth/login");
         return;
       }
       
-      const role = session.user.user_metadata?.role || "admin";
+      const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+          
+      const role = profile?.role || "player";
       
-      if (role === "admin" || role === "fixture_manager" || session.user.email?.includes('admin')) {
+      if (role === "admin" || role === "fixture_manager" || role === "referee" || session.user.email?.includes('admin')) {
         setAuthorized(true);
       } else {
         setAuthorized(false);

@@ -1,33 +1,81 @@
 import { useEffect, useState } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { AdminSidebar } from "./admin-sidebar";
-import { Search, Menu, X } from "lucide-react";
+import { Search, Menu, X, LogOut } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 
 export function AdminLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userRole, setUserRole] = useState("admin");
+  const [userProfile, setUserProfile] = useState<any>(null);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth/login");
+  };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) {
         navigate("/auth/login");
-      } else {
-        setLoading(false);
+        return;
       }
+      
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('role, full_name, email')
+        .eq('id', session.user.id)
+        .single();
+
+      const role = profile?.role || "player";
+      setUserRole(role);
+      setUserProfile(profile);
+
+      if (role === "referee" || role === "player") {
+        navigate("/referee");
+        return;
+      }
+
+      if (role === "fixture_manager") {
+        const allowedPaths = ["/admin/fixtures", "/admin/tournaments", "/admin"];
+        const isAllowed = allowedPaths.some(p => location.pathname === p || location.pathname.startsWith(`${p}/`));
+        if (!isAllowed && location.pathname !== "/admin") {
+          navigate("/admin/fixtures");
+          return;
+        }
+      }
+
+      setLoading(false);
     });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!session) {
         navigate("/auth/login");
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('role, full_name, email')
+        .eq('id', session.user.id)
+        .single();
+
+      const role = profile?.role || "player";
+      setUserRole(role);
+      setUserProfile(profile);
+
+      if (role === "referee" || role === "player") {
+        navigate("/referee");
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, location.pathname]);
 
   if (loading) {
     return (
@@ -79,17 +127,29 @@ export function AdminLayout() {
             />
           </div>
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3">
-              <div className="text-right hidden sm:block">
-                <p className="text-xs font-bold uppercase tracking-widest text-white">
-                  Admin
-                </p>
-                <p className="text-[10px] uppercase tracking-widest text-zinc-500">
-                  System OP
-                </p>
-              </div>
-              <div className="h-8 w-8 md:h-10 md:w-10 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-amber-500 font-bold shrink-0 text-sm md:text-base">
-                A
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleLogout}
+                className="hidden md:flex items-center justify-center p-2 text-zinc-500 hover:text-white transition-colors"
+                title="Log Out"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+              <div className="flex items-center gap-3">
+                <div className="text-right hidden sm:block">
+                  <p className="text-xs font-bold uppercase tracking-widest text-white">
+                    {userProfile?.full_name || userProfile?.email || "System OP"}
+                  </p>
+                  <p className="text-[10px] uppercase tracking-widest text-zinc-500">
+                    {userRole.replace('_', ' ')}
+                  </p>
+                </div>
+                <button onClick={handleLogout} className="md:hidden flex items-center justify-center text-zinc-500 hover:text-white mr-1" title="Log Out">
+                   <LogOut className="h-4 w-4" />
+                </button>
+                <div className="h-8 w-8 md:h-10 md:w-10 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-amber-500 font-bold shrink-0 text-sm md:text-base">
+                  {(userProfile?.full_name?.charAt(0) || userProfile?.email?.charAt(0) || "O").toUpperCase()}
+                </div>
               </div>
             </div>
           </div>

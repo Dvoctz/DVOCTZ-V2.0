@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase/client";
-import { ShieldAlert, Play, Pause, RotateCcw, Trophy, ChevronLeft, Save, CheckCircle } from "lucide-react";
+import { ShieldAlert, Play, Pause, RotateCcw, Trophy, ChevronLeft, Save, CheckCircle, LogOut } from "lucide-react";
 import html2canvas from "html2canvas";
 
 export default function RefereeConsole() {
   const [fixtures, setFixtures] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedFixture, setSelectedFixture] = useState<any | null>(null);
+  const [userRole, setUserRole] = useState<string>("admin");
+  const [userProfile, setUserProfile] = useState<any>(null);
 
   const [activeSetIdx, setActiveSetIdx] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
@@ -69,7 +71,25 @@ export default function RefereeConsole() {
 
   const fetchFixtures = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setLoading(false);
+        return;
+      }
+      
+      const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("role, team_id, full_name, email")
+        .eq("id", session.user.id)
+        .single();
+        
+      const role = profile?.role || "player";
+      setUserRole(role);
+      setUserProfile(profile);
+
+      let userTeamId = profile?.team_id;
+
+      let query = supabase
         .from("fixtures")
         .select(`
           *,
@@ -80,6 +100,18 @@ export default function RefereeConsole() {
         `)
         .neq('status', 'completed')
         .order("date_time", { ascending: true });
+
+      if (role === "referee") {
+        if (userTeamId) {
+          query = query.eq('officiating_team_id', userTeamId);
+        } else {
+          setFixtures([]);
+          setLoading(false);
+          return;
+        }
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setFixtures(data || []);
@@ -417,6 +449,11 @@ export default function RefereeConsole() {
     setSelectedFixture(null);
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = "/auth/login";
+  };
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
@@ -428,8 +465,31 @@ export default function RefereeConsole() {
   if (!selectedFixture) {
     return (
       <div className="flex-1 p-4 md:p-8 flex flex-col items-center justify-start relative">
+        <div className="absolute right-4 top-4 md:right-8 md:top-8 z-50 flex items-center gap-4">
+           <button
+             onClick={handleLogout}
+             className="flex items-center justify-center p-2 text-zinc-500 hover:text-white transition-colors"
+             title="Log Out"
+           >
+             <LogOut className="h-4 w-4 md:h-5 md:w-5" />
+           </button>
+           <div className="flex items-center gap-3">
+             <div className="text-right hidden sm:block">
+               <p className="text-xs font-bold uppercase tracking-widest text-white">
+                 {userProfile?.full_name || userProfile?.email || "Referee OP"}
+               </p>
+               <p className="text-[10px] uppercase tracking-widest text-zinc-500">
+                 {userRole.replace('_', ' ')}
+               </p>
+             </div>
+             <div className="h-8 w-8 md:h-10 md:w-10 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-amber-500 font-bold shrink-0 text-sm md:text-base">
+               {(userProfile?.full_name?.charAt(0) || userProfile?.email?.charAt(0) || "O").toUpperCase()}
+             </div>
+           </div>
+        </div>
+
         <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-amber-500/10 to-transparent pointer-events-none"></div>
-        <div className="w-full max-w-2xl relative z-10 flex flex-col h-full gap-6">
+        <div className="w-full max-w-2xl relative z-10 flex flex-col h-full gap-6 mt-16 md:mt-12">
            <div className="text-center mt-6">
               <h1 className="text-3xl font-bold tracking-tighter italic text-amber-500">OPERATIONS</h1>
               <p className="text-[10px] uppercase font-bold tracking-widest text-zinc-500 mt-1">Select an active fixture to officiate</p>
@@ -438,7 +498,9 @@ export default function RefereeConsole() {
            <div className="space-y-4">
              {fixtures.length === 0 ? (
                <div className="bg-zinc-950 border border-zinc-900 p-8 text-center rounded-sm">
-                 <p className="text-zinc-500 text-sm font-bold uppercase tracking-widest">No active fixtures found.</p>
+                 <p className="text-zinc-500 text-sm font-bold uppercase tracking-widest">
+                   {userRole === "referee" ? "No assigned officiating matches." : "No active fixtures found."}
+                 </p>
                </div>
              ) : (
                fixtures.map(f => (

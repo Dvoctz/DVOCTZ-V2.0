@@ -16,6 +16,7 @@ type Fixture = {
   status: string;
   stage?: string;
   referee: string;
+  officiating_team_id?: number | string | null;
   man_of_the_match_id: number | string | null;
   best_of: number;
   score: any;
@@ -81,6 +82,7 @@ export function FixturesManager({
     status: FIXTURE_STATUSES[0],
     stage: "round-robin",
     referee: "",
+    officiating_team_id: "",
     man_of_the_match_id: "",
     winner_team_id: "",
     best_of: 3,
@@ -186,6 +188,7 @@ export function FixturesManager({
         status: f.status || FIXTURE_STATUSES[0],
         stage: f.stage || "round-robin",
         referee: f.referee || "",
+        officiating_team_id: f.officiating_team_id?.toString() || "",
         man_of_the_match_id: f.man_of_the_match_id?.toString() || "",
         winner_team_id: f.winner_team_id?.toString() || "",
         best_of: f.best_of || 3,
@@ -216,6 +219,7 @@ export function FixturesManager({
         status: FIXTURE_STATUSES[0],
         stage: "round-robin",
         referee: "",
+        officiating_team_id: "",
         man_of_the_match_id: "",
         winner_team_id: "",
         best_of: 3,
@@ -330,6 +334,7 @@ export function FixturesManager({
       status: formData.status,
       stage: formData.stage,
       referee: formData.referee,
+      officiating_team_id: parseDbId(formData.officiating_team_id),
       man_of_the_match_id: parseDbId(formData.man_of_the_match_id),
       best_of: formData.best_of,
       score: scoreData,
@@ -837,7 +842,27 @@ export function FixturesManager({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold block">
-                    Referee
+                    Officiating Team
+                  </label>
+                  <select
+                    className="w-full bg-zinc-900 border border-zinc-800 p-3 text-sm focus:outline-none focus:border-purple-500/50 text-white transition-colors"
+                    value={formData.officiating_team_id}
+                    onChange={(e) =>
+                      setFormData((p) => ({ ...p, officiating_team_id: e.target.value }))
+                    }
+                  >
+                    <option value="">None Selected</option>
+                    {teams.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold block">
+                    Legacy Referee (Text)
                   </label>
                   <Input
                     value={formData.referee}
@@ -847,8 +872,13 @@ export function FixturesManager({
                     placeholder="e.g. John Smith"
                     className="focus:border-purple-500/50"
                   />
+                  <p className="text-[10px] text-zinc-500 mt-1">
+                    Retained for historical compatibility
+                  </p>
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
                   <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold block">
                     Man of the Match
