@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { Trophy } from "lucide-react";
 import { Link } from "react-router-dom";
+import { ShareStandings } from "@/components/ui/share-standings";
 
 type Team = {
   id: number;
@@ -41,8 +42,12 @@ type Standing = {
 
 export function TournamentStandings({
   tournamentId,
+  tournamentName,
+  divisionName,
 }: {
   tournamentId: number | string;
+  tournamentName?: string;
+  divisionName?: string;
 }) {
   const [teams, setTeams] = useState<Team[]>([]);
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
@@ -267,8 +272,18 @@ export function TournamentStandings({
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm text-left">
+    <div className="flex flex-col gap-4">
+      {tournamentName && (
+        <div className="flex justify-end p-2 bg-zinc-950 border-b border-zinc-900">
+          <ShareStandings 
+            tournamentName={tournamentName}
+            divisionName={divisionName}
+            standings={standings}
+          />
+        </div>
+      )}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-left">
         <thead className="text-[10px] uppercase tracking-widest text-zinc-500 bg-zinc-900/50 border-y border-zinc-800">
           <tr>
             <th className="px-4 py-3 font-semibold">Pos</th>
@@ -355,6 +370,7 @@ export function TournamentStandings({
           ))}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }

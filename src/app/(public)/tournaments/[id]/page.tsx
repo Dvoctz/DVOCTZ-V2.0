@@ -7,6 +7,7 @@ import { LiveTimer } from "@/components/ui/live-timer";
 import { SetScoreHistory } from "@/components/ui/set-score-history";
 import { Trophy, CalendarDays, ChevronLeft, ArrowLeft } from "lucide-react";
 import { TournamentStandings } from "@/components/standings/tournament-standings";
+import { ShareFixtures } from "@/components/ui/share-fixtures";
 
 type Tournament = {
   id: number;
@@ -501,7 +502,11 @@ export default function TournamentDetailPage() {
               <button onClick={() => setActiveTab('standings')} className="text-[10px] text-amber-500 hover:underline">View All</button>
             </h3>
             <div className="border border-zinc-900 bg-zinc-950/50 p-2 overflow-hidden max-h-[300px] relative">
-              <TournamentStandings tournamentId={id!} />
+              <TournamentStandings 
+                tournamentId={id!} 
+                tournamentName={tournament?.name} 
+                divisionName={tournament?.division} 
+              />
               <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-zinc-950 to-transparent pointer-events-none" />
             </div>
           </div>
@@ -510,15 +515,33 @@ export default function TournamentDetailPage() {
     </div>
   );
 
-  const renderFixturesTab = () => (
-    <section className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      {fixtures.length === 0 ? (
-        <div className="text-center py-12 border border-dashed border-zinc-800 bg-zinc-900/20">
-          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-            No fixtures slated
-          </p>
+  const renderFixturesTab = () => {
+    const shareableFixtures = fixtures.filter(f => f.status === "upcoming" || f.status === "live" || f.is_live);
+    
+    return (
+      <section className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+        <div className="flex justify-end border-b border-zinc-900 pb-4">
+          <ShareFixtures 
+            contextName={tournament?.name || "Tournament"}
+            fixtures={shareableFixtures.map(f => ({
+              date: new Date(f.date_time).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }),
+              time: new Date(f.date_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+              team1: f.team1?.name || "TBA",
+              team2: f.team2?.name || "TBA",
+              venue: f.ground,
+              officiatingTeam: f.referee || "TBA",
+              divisionName: tournament?.division
+            }))}
+          />
         </div>
-      ) : (
+        
+        {fixtures.length === 0 ? (
+          <div className="text-center py-12 border border-dashed border-zinc-800 bg-zinc-900/20">
+            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+              No fixtures slated
+            </p>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
           {FIXTURE_STAGES.map((stage) => {
             const stageFixtures = fixtures.filter(
@@ -564,11 +587,16 @@ export default function TournamentDetailPage() {
       )}
     </section>
   );
+};
 
   const renderStandingsTab = () => (
     <section className="w-full max-w-5xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
       <div className="border border-zinc-800 bg-zinc-950 p-2 md:p-6 shadow-2xl overflow-x-auto">
-        <TournamentStandings tournamentId={id!} />
+        <TournamentStandings 
+          tournamentId={id!} 
+          tournamentName={tournament?.name}
+          divisionName={tournament?.division}
+        />
       </div>
     </section>
   );

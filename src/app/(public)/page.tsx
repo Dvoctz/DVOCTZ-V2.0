@@ -17,6 +17,7 @@ import {
   AlignEndHorizontal,
 } from "lucide-react";
 import { TournamentStandings } from "@/components/standings/tournament-standings";
+import { ShareFixtures } from "@/components/ui/share-fixtures";
 
 type Tournament = {
   id: number;
@@ -542,20 +543,37 @@ export default function HomePage() {
           <h3 className="text-lg font-bold tracking-tight italic text-white flex items-center gap-2">
             <CalendarDays className="h-5 w-5 text-amber-500" /> Match Center
           </h3>
-          <div className="flex bg-zinc-900/50 p-1 rounded-md max-w-sm border border-zinc-800/50 w-full md:w-auto">
-            {(["LIVE", "UPCOMING", "COMPLETED"] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveFixtureTab(tab)}
-                className={`flex-1 min-w-[90px] text-[10px] font-bold uppercase tracking-widest py-2 px-3 rounded-sm transition-all ${
-                  activeFixtureTab === tab
-                    ? "bg-zinc-800 text-amber-500 shadow-sm"
-                    : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50"
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
+          <div className="flex items-center gap-4">
+            {displayedPublicFixtures.length > 0 && (
+              <ShareFixtures 
+                contextName={activeFixtureTab === "LIVE" ? "Live Matches" : activeFixtureTab === "UPCOMING" ? "Upcoming Matches" : "Completed Matches"}
+                fixtures={displayedPublicFixtures.map(f => ({
+                  date: new Date(f.date_time).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }),
+                  time: new Date(f.date_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+                  team1: f.team1?.name || "TBA",
+                  team2: f.team2?.name || "TBA",
+                  venue: f.ground,
+                  officiatingTeam: f.officiating_team?.name || "TBA",
+                  tournamentName: f.tournaments?.name,
+                  divisionName: f.tournaments?.division
+                }))}
+              />
+            )}
+            <div className="flex bg-zinc-900/50 p-1 rounded-md max-w-sm border border-zinc-800/50 w-full md:w-auto">
+              {(["LIVE", "UPCOMING", "COMPLETED"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveFixtureTab(tab)}
+                  className={`flex-1 min-w-[90px] text-[10px] font-bold uppercase tracking-widest py-2 px-3 rounded-sm transition-all ${
+                    activeFixtureTab === tab
+                      ? "bg-zinc-800 text-amber-500 shadow-sm"
+                      : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -616,7 +634,11 @@ export default function HomePage() {
                   </Link>
                 </div>
                 <div className="border border-zinc-900 bg-zinc-950 p-1 shadow-2xl overflow-hidden rounded-sm">
-                  <TournamentStandings tournamentId={activeDiv1.id} />
+                  <TournamentStandings 
+                    tournamentId={activeDiv1.id} 
+                    tournamentName={activeDiv1.name}
+                    divisionName={activeDiv1.division}
+                  />
                 </div>
               </div>
             )}
@@ -636,7 +658,11 @@ export default function HomePage() {
                   </Link>
                 </div>
                 <div className="border border-zinc-900 bg-zinc-950 p-1 shadow-2xl overflow-hidden rounded-sm">
-                  <TournamentStandings tournamentId={activeDiv2.id} />
+                  <TournamentStandings 
+                    tournamentId={activeDiv2.id}
+                    tournamentName={activeDiv2.name}
+                    divisionName={activeDiv2.division}
+                  />
                 </div>
               </div>
             )}
