@@ -1,5 +1,4 @@
-import React, { useRef, useState } from "react";
-import html2canvas from "html2canvas";
+import React, { useState } from "react";
 import { Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -21,42 +20,258 @@ interface ShareFixturesProps {
 
 export function ShareFixtures({ contextName, fixtures }: ShareFixturesProps) {
   const [isGenerating, setIsGenerating] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+
+  const drawRoundedRect = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.arcTo(x + w, y, x + w, y + r, r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+    ctx.lineTo(x + r, y + h);
+    ctx.arcTo(x, y + h, x, y + h - r, r);
+    ctx.lineTo(x, y + r);
+    ctx.arcTo(x, y, x + r, y, r);
+    ctx.closePath();
+  };
 
   const handleShare = async () => {
-    if (!containerRef.current || isGenerating || fixtures.length === 0) return;
+    if (isGenerating || fixtures.length === 0) return;
     setIsGenerating(true);
 
     try {
-      containerRef.current.style.display = "block";
-
       const MAX_PER_PAGE = 6;
-      const totalPages = Math.ceil(fixtures.length / MAX_PER_PAGE);
+      const pages = [];
+      for (let i = 0; i < fixtures.length; i += MAX_PER_PAGE) {
+        pages.push(fixtures.slice(i, i + MAX_PER_PAGE));
+      }
 
       const generatedFiles: File[] = [];
 
-      for (let page = 0; page < totalPages; page++) {
-        // Find the page container
-        const pageNode = document.getElementById(`share-fixtures-page-${page}`);
-        if (!pageNode) continue;
+      for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
+        const pageFixtures = pages[pageIndex];
 
-        const canvas = await html2canvas(pageNode, {
-          scale: 2,
-          backgroundColor: "#000000",
-          useCORS: true,
+        const canvas = document.createElement("canvas");
+        canvas.width = 1920;
+        canvas.height = 1080;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Could not get canvas context");
+
+        // Background
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, 0, 1920, 1080);
+
+        // Header Title
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = "italic 900 64px system-ui, -apple-system, sans-serif";
+        ctx.textBaseline = "top";
+        ctx.textAlign = "left";
+        ctx.fillText(contextName.toUpperCase(), 80, 80);
+
+        // Pagination text fixed to Top Right
+        if (pages.length > 1) {
+          ctx.fillStyle = "#71717A";
+          ctx.font = "bold 32px system-ui, -apple-system, sans-serif";
+          ctx.textAlign = "right";
+          ctx.fillText(`PART ${pageIndex + 1}/${pages.length}`, 1920 - 80, 80 + 16);
+        }
+
+        // Yellow line
+        ctx.fillStyle = "#D4AF37";
+        ctx.fillRect(80, 80 + 64 + 20, 120, 8);
+
+        let currentY = 180;
+
+        const cols = pageFixtures.length > 4 ? 2 : 1;
+        const cardWidth = cols === 1 ? 1920 - 160 : Math.floor((1920 - 160 - 40) / 2);
+
+        // Group fixtures by date
+        const groupedByDate: Record<string, ShareFixtureData[]> = {};
+        pageFixtures.forEach(f => {
+          if (!groupedByDate[f.date]) groupedByDate[f.date] = [];
+          groupedByDate[f.date].push(f);
         });
+
+        const dateCount = Object.keys(groupedByDate).length;
+        const totalRows = Math.ceil(pageFixtures.length / cols);
+        const dateHeaderHeight = 60 + 20; 
+        const rowGaps = totalRows * 20; 
+        const availableCardSpace = 1000 - currentY - (dateCount * dateHeaderHeight) - rowGaps;
+        
+        const minCardHeight = 200;
+        const cardHeight = Math.max(minCardHeight, Math.min(220, Math.floor(availableCardSpace / totalRows)));
+
+        // Loop over dates
+        for (const [dateStr, dateFixtures] of Object.entries(groupedByDate)) {
+          // Date Header
+          ctx.fillStyle = "#18181B";
+          ctx.fillRect(80, currentY, 1920 - 160, 60);
+          ctx.fillStyle = "#D4AF37";
+          ctx.fillRect(80, currentY, 6, 60);
+
+          ctx.textAlign = "left";
+          ctx.textBaseline = "middle";
+          ctx.font = "bold 36px system-ui, -apple-system, sans-serif";
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillText(dateStr.toUpperCase(), 80 + 20, currentY + 30);
+          
+          currentY += 60 + 20;
+
+          // Draw Fixture Grid
+          for (let i = 0; i < dateFixtures.length; i++) {
+            const f = dateFixtures[i];
+            const isRight = cols === 2 && i % 2 !== 0;
+            const x = isRight ? 80 + cardWidth + 40 : 80;
+            const y = currentY;
+
+            // Card BG + Border
+            ctx.fillStyle = "rgba(9, 9, 11, 0.8)";
+            drawRoundedRect(ctx, x, y, cardWidth, cardHeight, 10);
+            ctx.fill();
+            ctx.strokeStyle = "#18181B";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            const innerX = x + 20;
+            const innerY = y + 20;
+
+            // Time Block
+            ctx.fillStyle = "rgba(212, 175, 55, 0.1)"; 
+            ctx.strokeStyle = "rgba(212, 175, 55, 0.2)"; 
+            drawRoundedRect(ctx, innerX, innerY, 120, 40, 5);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = "#D4AF37";
+            ctx.font = "900 28px system-ui, -apple-system, sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(f.time, innerX + 60, innerY + 20);
+
+            // Context (Tournament Name)
+            if (f.tournamentName) {
+              ctx.textAlign = "right";
+              ctx.textBaseline = "middle";
+              ctx.fillStyle = "#A1A1AA";
+              ctx.font = "bold 20px system-ui, -apple-system, sans-serif";
+              ctx.fillText(f.tournamentName.toUpperCase(), x + cardWidth - 20, innerY + 20);
+            }
+
+            // Teams (Center Horizontal layout avoids vertical clipping)
+            const footerY = y + cardHeight - 85; 
+            const teamCenterY = y + 60 + (footerY - (y + 60)) / 2;
+            
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = "#52525B";
+            ctx.font = "italic bold 28px system-ui, -apple-system, sans-serif";
+            ctx.fillText("VS", x + cardWidth / 2, teamCenterY);
+
+            ctx.fillStyle = "#FFFFFF";
+            ctx.font = "900 36px system-ui, -apple-system, sans-serif";
+            
+            const maxTeamWidth = cardWidth / 2 - 80;
+            const drawTruncatedTeamName = (name: string, align: "left" | "right", px: number, py: number) => {
+              ctx.textAlign = align;
+              let n = name;
+              if (ctx.measureText(n).width > maxTeamWidth) {
+                 while (n.length > 0 && ctx.measureText(n + "...").width > maxTeamWidth) {
+                     n = n.slice(0, -1);
+                 }
+                 n += "...";
+              }
+              ctx.fillText(n, px, py);
+            };
+
+            drawTruncatedTeamName(f.team1.toUpperCase(), "right", x + cardWidth / 2 - 50, teamCenterY);
+            drawTruncatedTeamName(f.team2.toUpperCase(), "left", x + cardWidth / 2 + 50, teamCenterY);
+
+            // Lines and footers
+            ctx.strokeStyle = "#18181B";
+            ctx.beginPath();
+            ctx.moveTo(x + 20, footerY);
+            ctx.lineTo(x + cardWidth - 20, footerY);
+            ctx.stroke();
+
+            // Venue (Left)
+            ctx.textAlign = "left";
+            ctx.textBaseline = "top";
+            ctx.fillStyle = "#71717A";
+            ctx.font = "bold 16px system-ui, -apple-system, sans-serif";
+            ctx.fillText("VENUE", x + 20, footerY + 15);
+            ctx.fillStyle = "#D4D4D8";
+            ctx.font = "500 22px system-ui, -apple-system, sans-serif";
+            ctx.fillText((f.venue || "TBA").substring(0, 40), x + 20, footerY + 40);
+
+            // Officiating (Right - with text wrapping to prevent clipping)
+            ctx.textAlign = "right";
+            ctx.fillStyle = "#71717A";
+            ctx.font = "bold 16px system-ui, -apple-system, sans-serif";
+            ctx.fillText("OFFICIATING", x + cardWidth - 20, footerY + 15);
+            ctx.fillStyle = "#D4D4D8";
+            ctx.font = "500 22px system-ui, -apple-system, sans-serif";
+            
+            const offTeam = (f.officiatingTeam || "TBA");
+            const maxOffWidth = cardWidth / 2 - 40;
+            const words = offTeam.split(" ");
+            let line = "";
+            let textY = footerY + 40;
+            for (let w = 0; w < words.length; w++) {
+              const testLine = line + words[w] + " ";
+              if (ctx.measureText(testLine).width > maxOffWidth && w > 0) {
+                ctx.fillText(line.trim(), x + cardWidth - 20, textY);
+                line = words[w] + " ";
+                textY += 28; // move to next line
+              } else {
+                line = testLine;
+              }
+            }
+            if (line.trim()) {
+              ctx.fillText(line.trim(), x + cardWidth - 20, textY);
+            }
+
+            // Increment row Y after processing the last card in the row
+            if (cols === 1 || isRight || i === dateFixtures.length - 1) {
+              currentY += cardHeight + 20;
+            }
+          }
+        }
+
+        // Footer
+        ctx.fillStyle = "#09090B";
+        ctx.fillRect(0, 1080 - 80, 1920, 80);
+
+        ctx.fillStyle = "#18181B";
+        ctx.fillRect(0, 1080 - 82, 1920, 2);
+
+        ctx.textBaseline = "middle";
+
+        ctx.fillStyle = "#FFFFFF";
+        ctx.textAlign = "left";
+        ctx.font = "italic 900 32px system-ui, -apple-system, sans-serif";
+        ctx.fillText("DVOC V2", 80, 1080 - 40);
+
+        const titleWidth = ctx.measureText("DVOC V2").width;
+
+        ctx.fillStyle = "#71717A";
+        ctx.font = "500 32px system-ui, -apple-system, sans-serif";
+        ctx.fillText(" | ", 80 + titleWidth, 1080 - 43);
+
+        const sepWidth = ctx.measureText(" | ").width;
+
+        ctx.fillStyle = "#D4AF37";
+        ctx.font = "bold 28px system-ui, -apple-system, sans-serif";
+        ctx.fillText("www.dvoctz.app", 80 + titleWidth + sepWidth, 1080 - 40);
 
         const dataUrl = canvas.toDataURL("image/png");
         const blob = await (await fetch(dataUrl)).blob();
         
-        const fileName = totalPages > 1 
-          ? `fixtures-${contextName.replace(/\s+/g, "-")}-pt${page + 1}.png`
+        const fileName = pages.length > 1 
+          ? `fixtures-${contextName.replace(/\s+/g, "-")}-pt${pageIndex + 1}.png`
           : `fixtures-${contextName.replace(/\s+/g, "-")}.png`;
 
         generatedFiles.push(new File([blob], fileName, { type: "image/png" }));
       }
-
-      containerRef.current.style.display = "none";
 
       try {
         if (navigator.share && navigator.canShare({ files: generatedFiles })) {
@@ -88,135 +303,23 @@ export function ShareFixtures({ contextName, fixtures }: ShareFixturesProps) {
       }
     } catch (error) {
       console.error("Failed to generate fixtures share image", error);
-      if (containerRef.current) containerRef.current.style.display = "none";
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const MAX_PER_PAGE = 6;
-  const pages = [];
-  for (let i = 0; i < fixtures.length; i += MAX_PER_PAGE) {
-    pages.push(fixtures.slice(i, i + MAX_PER_PAGE));
-  }
-
   if (fixtures.length === 0) return null;
 
   return (
-    <>
-      <Button
-        onClick={handleShare}
-        disabled={isGenerating}
-        variant="outline"
-        size="sm"
-        className="border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-500 uppercase tracking-widest font-bold text-[10px] h-8 px-4"
-      >
-        <Share2 className="w-3 h-3 mr-2" />
-        {isGenerating ? "Generating..." : "Share Fixtures"}
-      </Button>
-
-      {/* Hidden container for rendering */}
-      <div 
-        ref={containerRef} 
-        style={{ display: "none" }}
-        className="absolute top-[-9999px] left-[-9999px]"
-      >
-        {pages.map((pageFixtures, pageIndex) => {
-          // Group page fixtures by Date string
-          const groupedByDate: Record<string, ShareFixtureData[]> = {};
-          pageFixtures.forEach(f => {
-            if (!groupedByDate[f.date]) groupedByDate[f.date] = [];
-            groupedByDate[f.date].push(f);
-          });
-
-          return (
-            <div 
-              key={pageIndex}
-              id={`share-fixtures-page-${pageIndex}`}
-              className="w-[1080px] h-[1350px] bg-[#000000] text-[#FFFFFF] relative font-sans overflow-hidden flex flex-col justify-between"
-              style={{ width: '1080px', height: '1350px' }} // enforce inline bounds for html2canvas
-            >
-              <div className="absolute inset-0 z-0" style={{ background: 'radial-gradient(ellipse at top right, rgba(212,175,55,0.15), #000000 50%, #000000 100%)', opacity: 0.6 }}></div>
-
-              <div className="relative z-10 w-full flex-1 p-[60px] pb-[40px] flex flex-col">
-                {/* Header */}
-                <div className="mb-8 flex justify-between items-end shrink-0">
-                  <div>
-                    <h1 className="text-[48px] font-black italic tracking-tighter uppercase text-[#FFFFFF] leading-none">
-                      {contextName}
-                    </h1>
-                    <div className="w-24 h-2 bg-[#D4AF37] mt-6"></div>
-                  </div>
-                  {pages.length > 1 && (
-                    <div className="text-[24px] uppercase tracking-widest text-[#71717A] font-bold mb-2">
-                       Part {pageIndex + 1}/{pages.length}
-                    </div>
-                  )}
-                </div>
-
-                {/* Fixtures List */}
-                <div className="flex-1 flex flex-col justify-start">
-                  {Object.entries(groupedByDate).map(([dateStr, dateFixtures]) => (
-                    <div key={dateStr} className="mb-6 last:mb-0">
-                      <div className="bg-[#18181B] border-l-4 border-[#D4AF37] px-4 py-2 mb-4 w-full">
-                         <h2 className="text-[28px] font-bold tracking-widest uppercase text-[#D4AF37]">
-                           {dateStr}
-                         </h2>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        {dateFixtures.map((f, fIdx) => (
-                          <div key={fIdx} className="border border-[#18181B] p-5 rounded-md flex flex-col" style={{ backgroundColor: 'rgba(9,9,11,0.8)' }}>
-                             <div className="flex justify-between items-start mb-4">
-                                <span className="text-[24px] font-black text-[#D4AF37] px-3 border" style={{ backgroundColor: 'rgba(212,175,55,0.1)', borderColor: 'rgba(212,175,55,0.2)' }}>{f.time}</span>
-                                <div className="text-right">
-                                  {f.tournamentName && (
-                                    <span className="block text-[14px] uppercase font-bold text-[#A1A1AA] tracking-widest">{f.tournamentName}</span>
-                                  )}
-                                  {f.divisionName && (
-                                    <span className="block text-[14px] uppercase font-bold text-[#71717A] tracking-widest">{f.divisionName}</span>
-                                  )}
-                                </div>
-                             </div>
-                             
-                             <div className="flex-1 flex flex-col items-center justify-center text-center my-2">
-                               <span className="text-[24px] font-black uppercase text-[#FFFFFF] leading-tight w-full truncate">{f.team1}</span>
-                               <span className="text-[16px] font-bold italic text-[#52525B] my-1">VS</span>
-                               <span className="text-[24px] font-black uppercase text-[#FFFFFF] leading-tight w-full truncate">{f.team2}</span>
-                             </div>
-
-                             <div className="mt-4 border-t border-[#18181B] pt-3 flex justify-between items-end">
-                                <div>
-                                  <span className="block text-[14px] text-[#71717A] uppercase tracking-widest font-bold">Venue</span>
-                                  <span className="block text-[18px] text-[#D4D4D8] font-medium truncate">{f.venue || "TBA"}</span>
-                                </div>
-                                <div className="text-right">
-                                  <span className="block text-[14px] text-[#71717A] uppercase tracking-widest font-bold">Officiating</span>
-                                  <span className="block text-[18px] text-[#D4D4D8] font-medium truncate">{f.officiatingTeam || "TBA"}</span>
-                                </div>
-                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="relative z-10 bg-[#09090B] border-t-2 border-[#18181B] flex justify-between items-center px-[60px] py-[30px] shrink-0">
-                <div>
-                  <h3 className="text-[32px] font-black italic tracking-tighter uppercase text-[#FFFFFF]">DVOC V2</h3>
-                  <p className="text-[20px] uppercase font-bold tracking-widest text-[#71717A] mt-1">Official League Platform</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[24px] font-bold text-[#D4AF37]">www.dvoctz.app</p>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </>
+    <Button
+      onClick={handleShare}
+      disabled={isGenerating}
+      variant="outline"
+      size="sm"
+      className="border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-500 uppercase tracking-widest font-bold text-[10px] h-8 px-4"
+    >
+      <Share2 className="w-3 h-3 mr-2" />
+      {isGenerating ? "Generating..." : "Share Fixtures"}
+    </Button>
   );
 }

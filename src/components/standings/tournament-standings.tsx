@@ -336,6 +336,7 @@ export function TournamentStandings({
                       <img
                         src={s.logo_url}
                         alt={s.team_name}
+                        crossOrigin="anonymous"
                         className="w-full h-full object-contain"
                       />
                     </div>

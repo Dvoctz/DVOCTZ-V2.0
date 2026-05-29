@@ -471,7 +471,7 @@ export default function HomePage() {
       {/* Champion Banner Section */}
       {(div1Champion || div2Champion) && (
         <section className="bg-gradient-to-b from-amber-500/10 to-black border-b border-amber-500/20 p-8 md:p-12 relative overflow-hidden">
-          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-10 mix-blend-overlay pointer-events-none"></div>
+          <div data-html2canvas-ignore="true" className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-10 mix-blend-overlay pointer-events-none"></div>
           <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent"></div>
 
           <div className="text-center mb-10 relative z-10">

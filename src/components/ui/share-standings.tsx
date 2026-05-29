@@ -1,6 +1,5 @@
-import React, { useRef, useState } from "react";
-import html2canvas from "html2canvas";
-import { Share2, Download } from "lucide-react";
+import React, { useState } from "react";
+import { Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface StandingRow {
@@ -21,31 +20,182 @@ interface ShareStandingsProps {
 
 export function ShareStandings({ tournamentName, divisionName, standings }: ShareStandingsProps) {
   const [isGenerating, setIsGenerating] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const handleShare = async () => {
-    if (!containerRef.current || isGenerating) return;
+    if (isGenerating) return;
     setIsGenerating(true);
 
     try {
-      // Temporarily unhide the container
-      containerRef.current.style.display = "block";
+      const canvas = document.createElement("canvas");
+      canvas.width = 1080;
+      canvas.height = 1350;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Could not get canvas context");
 
-      const nodeToRender = containerRef.current.firstElementChild as HTMLElement;
+      // Background
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, 0, 1080, 1350);
 
-      const canvas = await html2canvas(nodeToRender, {
-        scale: 2,
-        backgroundColor: "#000000",
-        useCORS: true,
+      // Draw Header
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "italic 900 50px system-ui, -apple-system, sans-serif";
+      ctx.textBaseline = "top";
+      ctx.fillText(tournamentName.toUpperCase(), 60, 60);
+
+      let currentY = 60 + 50 + 20;
+
+      if (divisionName) {
+        ctx.fillStyle = "#D4AF37";
+        ctx.font = "bold 36px system-ui, -apple-system, sans-serif";
+        ctx.fillText(divisionName.toUpperCase(), 60, currentY);
+        currentY += 36 + 20;
+      }
+
+      // Yellow line
+      ctx.fillStyle = "#D4AF37";
+      ctx.fillRect(60, currentY, 120, 8);
+      currentY += 8 + 60;
+
+      // Draw Table Header
+      ctx.font = "bold 30px system-ui, -apple-system, sans-serif";
+      
+      const columns = [
+        { label: "POS", x: 60, align: "center", w: 80 },
+        { label: "TEAM", x: 140, align: "left", w: 380 },
+        { label: "P", x: 520, align: "center", w: 70 },
+        { label: "W", x: 590, align: "center", w: 60 },
+        { label: "D", x: 650, align: "center", w: 60 },
+        { label: "L", x: 710, align: "center", w: 60 },
+        { label: "GD", x: 770, align: "center", w: 100 },
+        { label: "PTS", x: 870, align: "center", w: 150 }
+      ];
+
+      const drawTextBounded = (text: string, x: number, y: number, w: number, align: string) => {
+        const _align = align as CanvasTextAlign;
+        ctx.textAlign = _align;
+        let px = x;
+        if (align === "center") px = x + w / 2;
+        else if (align === "right") px = x + w;
+        ctx.fillText(text, px, y);
+      };
+
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "#71717A";
+      columns.forEach((col, i) => {
+        if (col.label === "PTS") ctx.fillStyle = "#D4AF37";
+        else ctx.fillStyle = "#71717A";
+        drawTextBounded(col.label, col.x, currentY + 20, col.w, col.align);
+      });
+      ctx.textAlign = "left"; // reset
+
+      currentY += 40;
+
+      // Header bottom border
+      ctx.fillStyle = "#18181B";
+      ctx.fillRect(60, currentY, 960, 2);
+      currentY += 24;
+
+      // Draw Rows
+      standings.slice(0, 10).forEach((s, idx) => {
+        let bgStyle = "transparent";
+        let leftBorder = "#18181B";
+        let posText = "#A1A1AA";
+        
+        if (idx === 0) { leftBorder = "#D4AF37"; bgStyle = "rgba(212,175,55,0.1)"; posText = "#D4AF37"; }
+        else if (idx === 1) { leftBorder = "#D4D4D8"; bgStyle = "rgba(212,212,216,0.1)"; posText = "#D4D4D8"; }
+        else if (idx === 2) { leftBorder = "#CD7F32"; bgStyle = "rgba(205,127,50,0.1)"; posText = "#CD7F32"; }
+
+        const rowHeight = 84;
+
+        // Draw Row BG
+        if (bgStyle !== "transparent") {
+          ctx.fillStyle = bgStyle;
+          ctx.fillRect(60, currentY, 960, rowHeight);
+        }
+
+        // Left Border
+        ctx.fillStyle = leftBorder;
+        ctx.fillRect(60, currentY, 8, rowHeight);
+
+        // Row Outline
+        ctx.strokeStyle = "#18181B";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(60, currentY, 960, rowHeight);
+
+        const textY = currentY + (rowHeight / 2);
+        
+        // POS
+        ctx.font = "900 32px system-ui, -apple-system, sans-serif";
+        ctx.fillStyle = posText;
+        drawTextBounded((idx + 1).toString(), columns[0].x, textY, columns[0].w, columns[0].align);
+
+        // TEAM
+        ctx.font = "bold 30px system-ui, -apple-system, sans-serif";
+        ctx.fillStyle = "#FFFFFF";
+        
+        // Truncate team name if needed
+        let teamName = s.team_name.toUpperCase();
+        if (ctx.measureText(teamName).width > columns[1].w - 20) {
+           while(teamName.length > 0 && ctx.measureText(teamName + "...").width > columns[1].w - 20) {
+             teamName = teamName.slice(0, -1);
+           }
+           teamName += "...";
+        }
+        drawTextBounded(teamName, columns[1].x, textY, columns[1].w, columns[1].align);
+
+        // Stats
+        ctx.font = "500 28px system-ui, -apple-system, sans-serif";
+        ctx.fillStyle = "#A1A1AA";
+        drawTextBounded(s.played.toString(), columns[2].x, textY, columns[2].w, columns[2].align);
+        drawTextBounded(s.wins.toString(), columns[3].x, textY, columns[3].w, columns[3].align);
+        drawTextBounded(s.draws.toString(), columns[4].x, textY, columns[4].w, columns[4].align);
+        drawTextBounded(s.losses.toString(), columns[5].x, textY, columns[5].w, columns[5].align);
+
+        // GD
+        ctx.font = "bold 28px system-ui, -apple-system, sans-serif";
+        let gdColor = "#71717A";
+        if (s.difference > 0) gdColor = "#10B981";
+        else if (s.difference < 0) gdColor = "#EF4444";
+        ctx.fillStyle = gdColor;
+        drawTextBounded((s.difference > 0 ? "+" : "") + s.difference.toString(), columns[6].x, textY, columns[6].w, columns[6].align);
+
+        // PTS
+        ctx.font = "900 36px system-ui, -apple-system, sans-serif";
+        ctx.fillStyle = "#D4AF37";
+        drawTextBounded(s.points.toString(), columns[7].x, textY, columns[7].w, columns[7].align);
+
+        currentY += rowHeight + 8; // gap
       });
 
-      // Hide it back
-      containerRef.current.style.display = "none";
+      // Footer
+      ctx.fillStyle = "#09090B";
+      ctx.fillRect(0, 1350 - 80, 1080, 80);
+
+      ctx.fillStyle = "#18181B";
+      ctx.fillRect(0, 1350 - 82, 1080, 2);
+
+      ctx.textBaseline = "middle";
+
+      ctx.fillStyle = "#FFFFFF";
+      ctx.textAlign = "left";
+      ctx.font = "italic 900 32px system-ui, -apple-system, sans-serif";
+      ctx.fillText("DVOC V2", 60, 1350 - 40);
+
+      const titleWidth = ctx.measureText("DVOC V2").width;
+
+      ctx.fillStyle = "#71717A";
+      ctx.font = "500 32px system-ui, -apple-system, sans-serif";
+      ctx.fillText(" | ", 60 + titleWidth, 1350 - 43);
+
+      const sepWidth = ctx.measureText(" | ").width;
+
+      ctx.fillStyle = "#D4AF37";
+      ctx.font = "bold 28px system-ui, -apple-system, sans-serif";
+      ctx.fillText("www.dvoctz.app", 60 + titleWidth + sepWidth, 1350 - 40);
 
       const dataUrl = canvas.toDataURL("image/png");
 
       try {
-        // Try native share if on mobile / supported environment
         const blob = await (await fetch(dataUrl)).blob();
         const file = new File([blob], `standings-${tournamentName.replace(/\s+/g, "-")}.png`, { type: "image/png" });
 
@@ -55,7 +205,6 @@ export function ShareStandings({ tournamentName, divisionName, standings }: Shar
             files: [file],
           });
         } else {
-          // Fallback to download
           const link = document.createElement("a");
           link.download = `standings-${tournamentName.replace(/\s+/g, "-")}.png`;
           link.href = dataUrl;
@@ -63,7 +212,6 @@ export function ShareStandings({ tournamentName, divisionName, standings }: Shar
         }
       } catch (err: any) {
         if (err.name !== "AbortError") {
-          // If share was canceled, don't download. If other error, fallback to download.
           const link = document.createElement("a");
           link.download = `standings-${tournamentName.replace(/\s+/g, "-")}.png`;
           link.href = dataUrl;
@@ -77,105 +225,16 @@ export function ShareStandings({ tournamentName, divisionName, standings }: Shar
     }
   };
 
-  const TopStyling = (index: number) => {
-    if (index === 0) return { accent: "border-[#D4AF37]", styleBg: "rgba(212,175,55,0.1)", text: "text-[#D4AF37]" };
-    if (index === 1) return { accent: "border-[#D4D4D8]", styleBg: "rgba(212,212,216,0.1)", text: "text-[#D4D4D8]" };
-    if (index === 2) return { accent: "border-[#CD7F32]", styleBg: "rgba(205,127,50,0.1)", text: "text-[#CD7F32]" };
-    return { accent: "border-[#27272A]", styleBg: "transparent", text: "text-[#A1A1AA]" };
-  };
-
   return (
-    <>
-      <Button
-        onClick={handleShare}
-        disabled={isGenerating}
-        variant="outline"
-        size="sm"
-        className="border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-500 uppercase tracking-widest font-bold text-[10px] h-8 px-4"
-      >
-        <Share2 className="w-3 h-3 mr-2" />
-        {isGenerating ? "Generating..." : "Share Standings"}
-      </Button>
-
-      {/* Hidden container for rendering */}
-      <div 
-        ref={containerRef} 
-        style={{ display: "none" }}
-        className="absolute top-[-9999px] left-[-9999px]"
-      >
-        <div 
-          className="w-[1080px] h-[1350px] bg-[#000000] text-[#FFFFFF] relative font-sans overflow-hidden flex flex-col justify-between"
-          style={{ width: '1080px', height: '1350px' }}
-        >
-          <div className="absolute inset-0 z-0" style={{ background: 'radial-gradient(ellipse at top right, rgba(212,175,55,0.15), #000000 50%, #000000 100%)', opacity: 0.6 }}></div>
-
-          <div className="relative z-10 w-full flex-1 p-[60px] pb-[40px] flex flex-col">
-            <div className="mb-8 shrink-0">
-              <h1 className="text-[40px] font-black italic tracking-tighter uppercase text-[#FFFFFF] leading-none">
-                {tournamentName}
-              </h1>
-              {divisionName && (
-                <h2 className="text-[28px] font-bold tracking-widest uppercase text-[#D4AF37] mt-3">
-                  {divisionName}
-                </h2>
-              )}
-              <div className="w-24 h-2 bg-[#D4AF37] mt-4"></div>
-            </div>
-
-            <div className="w-full flex-1 flex flex-col">
-              {/* Table Header */}
-              <div className="grid grid-cols-[8%_42%_7%_7%_7%_7%_10%_12%] gap-2 pb-4 border-b-2 border-[#18181B] text-[#71717A] font-bold uppercase tracking-widest text-[24px]">
-                <div className="text-center">Pos</div>
-                <div>Team</div>
-                <div className="text-center">P</div>
-                <div className="text-center">W</div>
-                <div className="text-center">D</div>
-                <div className="text-center">L</div>
-                <div className="text-center">GD</div>
-                <div className="text-center text-[#D4AF37]">Pts</div>
-              </div>
-
-              {/* Table Rows */}
-              <div className="mt-4 flex flex-col gap-3 flex-1 overflow-hidden">
-                {standings.map((s, idx) => {
-                  const style = TopStyling(idx);
-                  return (
-                    <div 
-                      key={idx} 
-                      className={`grid grid-cols-[8%_42%_7%_7%_7%_7%_10%_12%] gap-2 items-center py-5 border-l-4 ${style.accent} px-4 border-y border-r border-[#18181B] text-[28px]`}
-                      style={{ backgroundColor: style.styleBg }}
-                    >
-                      <div className={`text-center font-black ${style.text}`}>{idx + 1}</div>
-                      <div className="font-bold text-[#FFFFFF] uppercase tracking-wider leading-tight pr-2 break-words text-[26px]">
-                        {s.team_name}
-                      </div>
-                      <div className="text-center text-[#A1A1AA] font-medium">{s.played}</div>
-                      <div className="text-center text-[#A1A1AA] font-medium">{s.wins}</div>
-                      <div className="text-center text-[#A1A1AA] font-medium">{s.draws}</div>
-                      <div className="text-center text-[#A1A1AA] font-medium">{s.losses}</div>
-                      <div className={`text-center font-bold ${s.difference > 0 ? "text-[#10B981]" : s.difference < 0 ? "text-[#EF4444]" : "text-[#71717A]"}`}>
-                        {s.difference > 0 ? "+" : ""}{s.difference}
-                      </div>
-                      <div className="text-center font-black text-[#D4AF37]">{s.points}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          <div className="relative z-10 bg-[#09090B] border-t-2 border-[#18181B] flex justify-between items-center px-[60px] py-[30px] shrink-0">
-            <div>
-              <h3 className="text-[32px] font-black italic tracking-tighter uppercase text-[#FFFFFF]">DVOC V2</h3>
-              <p className="text-[20px] uppercase font-bold tracking-widest text-[#71717A] mt-1">Official League Platform</p>
-            </div>
-            <div className="text-right">
-              <p className="text-[20px] uppercase font-bold tracking-widest text-[#71717A] mb-1">Full statistics available at</p>
-              <p className="text-[24px] font-bold text-[#D4AF37]">www.dvoctz.app</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
+    <Button
+      onClick={handleShare}
+      disabled={isGenerating}
+      variant="outline"
+      size="sm"
+      className="border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-500 uppercase tracking-widest font-bold text-[10px] h-8 px-4"
+    >
+      <Share2 className="w-3 h-3 mr-2" />
+      {isGenerating ? "Generating..." : "Share Standings"}
+    </Button>
   );
 }

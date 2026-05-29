@@ -363,6 +363,7 @@ export default function TournamentDetailPage() {
               {f.team1?.logo_url ? (
                 <img
                   src={f.team1.logo_url}
+                  crossOrigin="anonymous"
                   className="w-4 h-4 object-contain"
                   alt=""
                 />
@@ -390,6 +391,7 @@ export default function TournamentDetailPage() {
               {f.team2?.logo_url ? (
                 <img
                   src={f.team2.logo_url}
+                  crossOrigin="anonymous"
                   className="w-4 h-4 object-contain"
                   alt=""
                 />
@@ -743,6 +745,7 @@ export default function TournamentDetailPage() {
               <img
                 src={tournament.banner_url}
                 alt={tournament.name}
+                crossOrigin="anonymous"
                 className="absolute inset-0 w-full h-full object-cover z-0"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent z-10" />
