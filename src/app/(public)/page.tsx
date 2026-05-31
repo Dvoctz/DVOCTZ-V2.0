@@ -544,18 +544,23 @@ export default function HomePage() {
             <CalendarDays className="h-5 w-5 text-amber-500" /> Match Center
           </h3>
           <div className="flex items-center gap-4">
-            {displayedPublicFixtures.length > 0 && (
+            {([...upcomingFixtures, ...recentFixtures]).length > 0 && (
               <ShareFixtures 
-                contextName={activeFixtureTab === "LIVE" ? "Live Matches" : activeFixtureTab === "UPCOMING" ? "Upcoming Matches" : "Completed Matches"}
-                fixtures={displayedPublicFixtures.map(f => ({
+                contextName="Match Center"
+                fixtures={[...upcomingFixtures, ...recentFixtures].map(f => ({
                   date: new Date(f.date_time).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }),
                   time: new Date(f.date_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+                  unixTime: new Date(f.date_time).getTime(),
                   team1: f.team1?.name || "TBA",
                   team2: f.team2?.name || "TBA",
                   venue: f.ground,
                   officiatingTeam: f.officiating_team?.name || "TBA",
                   tournamentName: f.tournaments?.name,
-                  divisionName: f.tournaments?.division
+                  divisionName: f.tournaments?.division,
+                  status: f.status,
+                  team1Score: f.score?.team1Score,
+                  team2Score: f.score?.team2Score,
+                  winner: f.winner?.name
                 }))}
               />
             )}

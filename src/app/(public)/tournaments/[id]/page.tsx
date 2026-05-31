@@ -518,21 +518,25 @@ export default function TournamentDetailPage() {
   );
 
   const renderFixturesTab = () => {
-    const shareableFixtures = fixtures.filter(f => f.status === "upcoming" || f.status === "live" || f.is_live);
-    
     return (
       <section className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
         <div className="flex justify-end border-b border-zinc-900 pb-4">
           <ShareFixtures 
             contextName={tournament?.name || "Tournament"}
-            fixtures={shareableFixtures.map(f => ({
+            fixtures={fixtures.map(f => ({
               date: new Date(f.date_time).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }),
               time: new Date(f.date_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+              unixTime: new Date(f.date_time).getTime(),
               team1: f.team1?.name || "TBA",
               team2: f.team2?.name || "TBA",
               venue: f.ground,
               officiatingTeam: f.referee || "TBA",
-              divisionName: tournament?.division
+              tournamentName: tournament?.name,
+              divisionName: tournament?.division,
+              status: f.status,
+              team1Score: f.score?.team1Score,
+              team2Score: f.score?.team2Score,
+              winner: f.winner?.name
             }))}
           />
         </div>
