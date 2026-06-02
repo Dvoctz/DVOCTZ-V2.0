@@ -378,11 +378,13 @@ export default function TournamentDetailPage() {
                 {f.team1?.name || "TBD"}
               </span>
             </div>
-            <span
-              className={`text-sm font-black tabular-nums pl-2 ${t1Winner || isLive ? "text-amber-500" : "text-zinc-500"}`}
-            >
-              {isLive && f.score?.sets ? (f.score.sets[f.score.activeSet ?? 0]?.team1Points ?? f.score.team1Score ?? 0) : (f.score?.team1Score ?? "-")}
-            </span>
+            {!isUpcoming && (
+              <span
+                className={`text-sm font-black tabular-nums pl-2 ${t1Winner || isLive ? "text-amber-500" : "text-zinc-500"}`}
+              >
+                {isLive && f.score?.sets ? (f.score.sets[f.score.activeSet ?? 0]?.team1Points ?? f.score.team1Score ?? 0) : (f.score?.team1Score ?? "-")}
+              </span>
+            )}
           </div>
           <div
             className={`flex justify-between items-center p-2 rounded-sm border transition-colors ${t2Winner || (isLive && f.score?.servingTeam === "t2") ? "bg-amber-500/10 border-amber-500/20" : "bg-zinc-900/50 border-zinc-800/50 hover:bg-zinc-900"}`}
@@ -406,11 +408,13 @@ export default function TournamentDetailPage() {
                 {isLive && f.score?.servingTeam === "t2" && <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce shrink-0"></span>}
               </span>
             </div>
-            <span
-              className={`text-sm font-black tabular-nums pl-2 ${t2Winner || isLive ? "text-amber-500" : "text-zinc-500"}`}
-            >
-              {isLive && f.score?.sets ? (f.score.sets[f.score.activeSet ?? 0]?.team2Points ?? f.score.team2Score ?? 0) : (f.score?.team2Score ?? "-")}
-            </span>
+            {!isUpcoming && (
+              <span
+                className={`text-sm font-black tabular-nums pl-2 ${t2Winner || isLive ? "text-amber-500" : "text-zinc-500"}`}
+              >
+                {isLive && f.score?.sets ? (f.score.sets[f.score.activeSet ?? 0]?.team2Points ?? f.score.team2Score ?? 0) : (f.score?.team2Score ?? "-")}
+              </span>
+            )}
           </div>
         </div>
       </Link>
@@ -480,6 +484,29 @@ export default function TournamentDetailPage() {
             {renderBracketColumn("Quarterfinals", ["quarterfinal"])}
             {renderBracketColumn("Semifinals", ["semifinal"])}
             {renderBracketColumn("Final", ["final"])}
+            {fixtures.some((f) => f.stage === "final" && f.status === "completed" && f.winner) && (
+              <div className="flex flex-col flex-1 min-w-[280px] snap-center">
+                <div className="mb-6 pb-3 border-b-2 border-amber-500/20 text-center">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-amber-500">
+                    Champion
+                  </h3>
+                </div>
+                <div className="flex flex-col gap-8 justify-around flex-1 relative h-full">
+                  <div className="block w-full py-8 px-4 border border-amber-500 bg-amber-500/10 shadow-[0_0_20px_rgba(245,158,11,0.2)] text-center relative overflow-hidden group hover:bg-amber-500/20 transition-colors">
+                    <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(245,158,11,0.1)_50%,transparent_75%)] bg-[length:250%_250%,100%_100%] animate-[shimmer_2s_infinite] pointer-events-none" />
+                    <div className="w-16 h-16 mx-auto bg-zinc-950 rounded-full mb-4 flex items-center justify-center border-2 border-amber-500/50 relative z-10">
+                      <Trophy className="w-8 h-8 text-amber-500" />
+                    </div>
+                    <h4 className="text-xl font-black uppercase tracking-widest text-amber-500 mb-2 relative z-10 drop-shadow-md">
+                      {fixtures.find((f) => f.stage === "final" && f.status === "completed")?.winner?.name}
+                    </h4>
+                    <p className="text-[10px] text-amber-500/80 font-bold uppercase tracking-widest relative z-10">
+                      Tournament Champion
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </section>
       )}

@@ -17,6 +17,7 @@ import {
   AlignEndHorizontal,
 } from "lucide-react";
 import { TournamentStandings } from "@/components/standings/tournament-standings";
+import { HomeKnockoutWidget } from "@/components/standings/home-knockout-widget";
 import { ShareFixtures } from "@/components/ui/share-fixtures";
 
 type Tournament = {
@@ -89,10 +90,11 @@ export default function HomePage() {
     teams: 0,
   });
   const [activeFixtureTab, setActiveFixtureTab] = useState<"LIVE" | "UPCOMING" | "COMPLETED">("LIVE");
+  const [knockoutTournaments, setKnockoutTournaments] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     const loadHomeData = async () => {
-      const [tRes, uRes, rRes, sRes, totalRes, tourneyRes, liveRes, teamsRes] = await Promise.all([
+      const [tRes, uRes, rRes, sRes, totalRes, tourneyRes, liveRes, teamsRes, knockoutsRes] = await Promise.all([
         supabase
           .from("tournaments")
           .select("*")
@@ -117,11 +119,16 @@ export default function HomePage() {
         supabase.from("page_visits").select("*", { count: "exact", head: true }),
         supabase.from("page_visits").select("*", { count: "exact", head: true }).eq("page_type", "tournament"),
         supabase.from("page_visits").select("*", { count: "exact", head: true }).in("page_type", ["live", "match"]),
-        supabase.from("teams").select("*", { count: "exact", head: true })
+        supabase.from("teams").select("*", { count: "exact", head: true }),
+        supabase.from("fixtures").select("tournament_id").in("stage", ["quarterfinal", "semifinal", "final", "third_place"])
       ]);
 
       const loadedTournaments = tRes.data || [];
       setTournaments(loadedTournaments);
+      
+      if (knockoutsRes.data) {
+        setKnockoutTournaments(new Set(knockoutsRes.data.map((k: any) => k.tournament_id)));
+      }
       
       setPlatformStats({
         total: totalRes.count || 0,
@@ -627,7 +634,7 @@ export default function HomePage() {
               <div>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-sm font-bold text-amber-500 uppercase tracking-widest">
-                    {activeDiv1.name}
+                    {activeDiv1.name} {knockoutTournaments.has(activeDiv1.id) ? "- KO Bracket" : "- Standings"}
                   </h3>
                   <Link to={`/tournaments/${activeDiv1.id}`}>
                     <Button
@@ -638,12 +645,16 @@ export default function HomePage() {
                     </Button>
                   </Link>
                 </div>
-                <div className="border border-zinc-900 bg-zinc-950 p-1 shadow-2xl overflow-hidden rounded-sm">
-                  <TournamentStandings 
-                    tournamentId={activeDiv1.id} 
-                    tournamentName={activeDiv1.name}
-                    divisionName={activeDiv1.division}
-                  />
+                <div className={`border border-zinc-900 bg-zinc-950 p-1 shadow-2xl overflow-hidden rounded-sm ${knockoutTournaments.has(activeDiv1.id) ? "flex items-center justify-center min-h-[300px]" : ""}`}>
+                  {knockoutTournaments.has(activeDiv1.id) ? (
+                    <HomeKnockoutWidget tournamentId={activeDiv1.id} />
+                  ) : (
+                    <TournamentStandings 
+                      tournamentId={activeDiv1.id} 
+                      tournamentName={activeDiv1.name}
+                      divisionName={activeDiv1.division}
+                    />
+                  )}
                 </div>
               </div>
             )}
@@ -651,7 +662,7 @@ export default function HomePage() {
               <div>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-sm font-bold text-zinc-300 uppercase tracking-widest">
-                    {activeDiv2.name}
+                    {activeDiv2.name} {knockoutTournaments.has(activeDiv2.id) ? "- KO Bracket" : "- Standings"}
                   </h3>
                   <Link to={`/tournaments/${activeDiv2.id}`}>
                     <Button
@@ -662,12 +673,16 @@ export default function HomePage() {
                     </Button>
                   </Link>
                 </div>
-                <div className="border border-zinc-900 bg-zinc-950 p-1 shadow-2xl overflow-hidden rounded-sm">
-                  <TournamentStandings 
-                    tournamentId={activeDiv2.id}
-                    tournamentName={activeDiv2.name}
-                    divisionName={activeDiv2.division}
-                  />
+                <div className={`border border-zinc-900 bg-zinc-950 p-1 shadow-2xl overflow-hidden rounded-sm ${knockoutTournaments.has(activeDiv2.id) ? "flex items-center justify-center min-h-[300px]" : ""}`}>
+                  {knockoutTournaments.has(activeDiv2.id) ? (
+                    <HomeKnockoutWidget tournamentId={activeDiv2.id} />
+                  ) : (
+                    <TournamentStandings 
+                      tournamentId={activeDiv2.id} 
+                      tournamentName={activeDiv2.name}
+                      divisionName={activeDiv2.division}
+                    />
+                  )}
                 </div>
               </div>
             )}
